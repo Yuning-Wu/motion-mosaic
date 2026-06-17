@@ -27,6 +27,7 @@ INDEX_PATH = ROOT / "index.html"
 ANIMATED_SOURCE_SUFFIXES = {".gif", ".webp"}
 STATIC_SOURCE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
 SUPPORTED_SOURCE_SUFFIXES = ANIMATED_SOURCE_SUFFIXES | STATIC_SOURCE_SUFFIXES
+SOURCE_META_FILENAME = "_source.json"
 RENDER_JOBS: dict[str, dict] = {}
 RENDER_JOBS_LOCK = threading.Lock()
 RENDER_JOB_TTL_SECONDS = 60 * 60
@@ -150,6 +151,52 @@ def source_for_asset_id(asset_id: str, source_dir: Path) -> Path | None:
     return None
 
 
+def source_signature(path: Path) -> dict:
+    stat = path.stat()
+    return {
+        "path": str(path.resolve()),
+        "size": int(stat.st_size),
+        "mtimeNs": int(stat.st_mtime_ns),
+    }
+
+
+def source_meta_path(asset_id: str) -> Path:
+    return FRAMES_DIR / asset_id / SOURCE_META_FILENAME
+
+
+def read_source_meta(asset_id: str) -> dict:
+    path = source_meta_path(asset_id)
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def write_source_meta(asset_id: str, source: Path, frame_count_written: int, kind: str) -> None:
+    path = source_meta_path(asset_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = {
+        **source_signature(source),
+        "frameCount": frame_count_written,
+        "kind": kind,
+        "loadedAt": time.time(),
+    }
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def frame_source_stale(asset_id: str, source: Path | None) -> bool:
+    if source is None or frame_count(asset_id) <= 0:
+        return False
+    meta = read_source_meta(asset_id)
+    if not meta:
+        return True
+    signature = source_signature(source)
+    return any(meta.get(key) != signature[key] for key in ("path", "size", "mtimeNs"))
+
+
 def frame_asset_dirs() -> list[Path]:
     if not FRAMES_DIR.exists():
         return []
@@ -205,6 +252,7 @@ def source_record(
     frames = frame_count(asset_id)
     stat = path.stat()
     kind = source_kind(path)
+    stale = frame_source_stale(asset_id, path)
     return {
         "id": asset_id,
         "name": relative_name,
@@ -215,7 +263,9 @@ def source_record(
         "path": str(path),
         "size": stat.st_size,
         "mtime": stat.st_mtime,
+        "mtimeNs": stat.st_mtime_ns,
         "imported": frames > 0,
+        "stale": stale,
         "frameCount": frames,
         "annotatedFrameCount": annotated_frame_count(asset_id, annotations),
         "active": asset_id in active_files if active_files_configured else frames > 0,
@@ -243,6 +293,7 @@ def frame_record(
         "baseName": source.name if source else "",
         "kind": source_kind(source) if source else "unknown",
         "missingSource": source is None,
+        "sourceStale": frame_source_stale(asset_id, source),
         "frameCount": len(frame_files),
         "annotatedFrameCount": annotated_frame_count(asset_id, annotations),
         "active": asset_id in active_files if active_files_configured else True,
@@ -350,6 +401,9 @@ def extract_frames(source: Path, source_dir: Path, overwrite: bool) -> dict:
             image.convert("RGBA").save(target_dir / "frame_000000.png")
             frame_count_written = 1
 
+    kind = "animated" if is_animated else "static"
+    write_source_meta(asset_id, source, frame_count_written, kind)
+
     annotations = load_annotations()
     annotations.setdefault("files", {}).setdefault(asset_id, {"frames": {}})
     save_annotations(annotations)
@@ -357,7 +411,7 @@ def extract_frames(source: Path, source_dir: Path, overwrite: bool) -> dict:
         "id": asset_id,
         "status": "imported",
         "frameCount": frame_count_written,
-        "kind": "animated" if is_animated else "static",
+        "kind": kind,
     }
 
 

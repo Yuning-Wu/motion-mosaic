@@ -956,7 +956,7 @@
         <button id="saveDirBtn" class="small-btn primary">保存目录</button>
         <button id="refreshBtn" class="small-btn">刷新</button>
         <button id="selectAllSourcesBtn" class="small-btn">全选</button>
-        <button id="extractSelectedBtn" class="small-btn">加载选中</button>
+        <button id="extractSelectedBtn" class="small-btn">加载/更新</button>
         <button id="exportSelectedBtn" class="small-btn primary" title="保存标注并导出压缩 WebP">导出</button>
       </div>
       <div id="exportStatus" class="export-status"></div>
@@ -2358,9 +2358,16 @@
       if (!state.workspace) return;
       const sourceCount = state.workspace.sourceFiles.length;
       const importedCount = state.workspace.sourceFiles.filter(source => source.imported).length;
+      const staleCount = state.workspace.sourceFiles.filter(source => source.stale).length;
       const completedCount = state.workspace.sourceFiles.filter(source => isFileComplete(source.id)).length;
       const activeCount = activeIdsFromWorkspace().size;
-      directoryMeta.textContent = `图 ${sourceCount} · 已载 ${importedCount} · 完成 ${completedCount} · 选中 ${activeCount}`;
+      directoryMeta.textContent = [
+        `图 ${sourceCount}`,
+        `已载 ${importedCount}`,
+        staleCount ? `待更新 ${staleCount}` : '',
+        `完成 ${completedCount}`,
+        `选中 ${activeCount}`
+      ].filter(Boolean).join(' · ');
     }
 
     function renderSourceFileList() {
@@ -2403,7 +2410,9 @@
         const annotated = countAnnotatedFrames(source.id);
         const completion = fileCompletionLabel(source.id);
         let progress = '<span class="source-pill warn">未加载</span>';
-        if (source.imported && completion) {
+        if (source.imported && source.stale) {
+          progress = '<span class="source-pill warn">源图已更新</span>';
+        } else if (source.imported && completion) {
           progress = `<span class="source-pill done">${completion}</span>`;
         } else if (source.imported && annotated) {
           progress = `<span class="source-pill strong">已标 ${annotated}/${source.frameCount}</span>`;
@@ -2425,11 +2434,11 @@
 
         const button = document.createElement('button');
         button.className = 'small-btn source-command';
-        button.textContent = source.imported ? '重新加载' : '加载';
-        button.title = source.imported ? '重新读取源文件' : '加载到工作台';
+        button.textContent = source.stale ? '更新' : (source.imported ? '重新加载' : '加载');
+        button.title = source.stale ? '源文件已变化，重新读取源文件' : (source.imported ? '重新读取源文件' : '加载到工作台');
         button.addEventListener('click', evt => {
           evt.stopPropagation();
-          extractAssets([source.id], source.imported).catch(showError);
+          extractAssets([source.id], source.imported || source.stale).catch(showError);
         });
 
         item.appendChild(checkbox);
@@ -2849,11 +2858,18 @@
       updateActiveFiles(new Set(state.workspace.sourceFiles.map(source => source.id))).catch(showError);
     });
     document.getElementById('extractSelectedBtn').addEventListener('click', () => {
-      const ids = [...activeIdsFromWorkspace()].filter(id => {
-        const source = state.workspace?.sourceFiles.find(item => item.id === id);
-        return source && !source.imported;
-      });
-      extractAssets(ids, false).catch(showError);
+      const sources = [...activeIdsFromWorkspace()]
+        .map(id => state.workspace?.sourceFiles.find(item => item.id === id))
+        .filter(Boolean);
+      const pendingSources = sources.filter(source => !source.imported || source.stale);
+      if (!pendingSources.length) {
+        statusEl.textContent = '选中文件都已加载，源文件没有变化';
+        return;
+      }
+      extractAssets(
+        pendingSources.map(source => source.id),
+        pendingSources.some(source => source.stale)
+      ).catch(showError);
     });
     document.getElementById('exportSelectedBtn').addEventListener('click', () => {
       exportSelectedAssets().catch(showError);
