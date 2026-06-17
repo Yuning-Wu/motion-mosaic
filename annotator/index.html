@@ -1,0 +1,2984 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Remask Annotator</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fa;
+      --panel: #ffffff;
+      --line: #d8dee8;
+      --text: #1f2933;
+      --muted: #64748b;
+      --accent: #0f766e;
+      --accent-weak: #d9f2ee;
+      --warn: #a16207;
+      --warn-bg: #fff7d6;
+      --danger: #b42318;
+      --shape: #e11d48;
+      --preview: #2563eb;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 14px;
+      letter-spacing: 0;
+    }
+
+    button, input {
+      font: inherit;
+    }
+
+    button:disabled, input:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 330px minmax(420px, 1fr) 320px;
+      height: 100vh;
+      min-width: 1120px;
+    }
+
+    aside, main, .right {
+      min-height: 0;
+    }
+
+    aside, .right {
+      background: var(--panel);
+      border-right: 1px solid var(--line);
+      padding: 12px;
+      overflow: auto;
+    }
+
+    .right {
+      border-right: 0;
+      border-left: 1px solid var(--line);
+    }
+
+    h1, h2 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .input {
+      width: 100%;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 7px 8px;
+      color: var(--text);
+      background: #fff;
+    }
+
+    .file-btn, .tool-btn, .small-btn, .icon-btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--text);
+      border-radius: 6px;
+      cursor: pointer;
+      min-height: 34px;
+    }
+
+    .file-btn {
+      width: 100%;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      text-align: left;
+    }
+
+    .file-btn.active, .tool-btn.active {
+      border-color: var(--accent);
+      background: var(--accent-weak);
+      color: #064e45;
+    }
+
+    .file-meta {
+      display: block;
+      color: var(--muted);
+      margin-top: 3px;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    main {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .topbar, .statusbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+    }
+
+    .topbar input[type="range"] {
+      flex: 1;
+      min-width: 240px;
+    }
+
+    .small-btn {
+      padding: 0 10px;
+      white-space: nowrap;
+    }
+
+    .small-btn.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .small-btn.danger {
+      border-color: #f3b4ae;
+      color: var(--danger);
+    }
+
+    .icon-btn {
+      width: 34px;
+      padding: 0;
+      display: inline-grid;
+      place-items: center;
+      font-weight: 650;
+    }
+
+    .workspace {
+      display: grid;
+      place-items: center;
+      min-height: 0;
+      overflow: auto;
+      background: #e8edf3;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    canvas {
+      display: block;
+      max-width: 100%;
+      max-height: calc(100vh - 150px);
+      background: #111827;
+      box-shadow: 0 1px 5px rgba(15, 23, 42, 0.16);
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .tool-btn {
+      padding: 8px 10px;
+    }
+
+    .group {
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+      margin-top: 12px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .range-panel {
+      display: grid;
+      gap: 10px;
+    }
+
+    .range-readout {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+
+    .range-metric {
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #f8fafc;
+      padding: 7px 8px;
+      min-width: 0;
+    }
+
+    .range-metric.source-metric {
+      grid-column: 1 / -1;
+    }
+
+    .range-metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .range-metric strong {
+      display: block;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.35;
+      margin-top: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .range-actions {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .range-timeline {
+      position: relative;
+      height: 54px;
+      margin: 2px 8px 0;
+      touch-action: none;
+    }
+
+    .range-track {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 25px;
+      height: 10px;
+      border-radius: 999px;
+      background: #dce3ed;
+      box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.12);
+      cursor: pointer;
+    }
+
+    .range-selection {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      min-width: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    .range-current {
+      position: absolute;
+      top: 13px;
+      width: 2px;
+      height: 32px;
+      background: var(--preview);
+      transform: translateX(-1px);
+      pointer-events: none;
+    }
+
+    .range-source {
+      position: absolute;
+      top: 8px;
+      width: 3px;
+      height: 42px;
+      background: var(--warn);
+      transform: translateX(-1px);
+      pointer-events: none;
+    }
+
+    .range-handle {
+      position: absolute;
+      top: 11px;
+      width: 24px;
+      height: 38px;
+      border: 2px solid var(--accent);
+      border-radius: 999px;
+      background: #fff;
+      transform: translateX(-12px);
+      cursor: ew-resize;
+      box-shadow: 0 1px 5px rgba(15, 23, 42, 0.18);
+    }
+
+    .range-handle::after {
+      content: attr(data-label);
+      position: absolute;
+      left: 50%;
+      top: -15px;
+      transform: translateX(-50%);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .range-frame-strip {
+      display: grid;
+      gap: 1px;
+      min-height: 28px;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #f1f5f9;
+    }
+
+    .range-frame {
+      position: relative;
+      min-width: 0;
+      height: 22px;
+      border: 0;
+      border-radius: 2px;
+      background: #dbe3ee;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .range-frame.in-range {
+      background: #8fd3c9;
+    }
+
+    .range-frame.will-apply::before {
+      content: "";
+      position: absolute;
+      left: 2px;
+      right: 2px;
+      top: 3px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--preview);
+    }
+
+    .range-frame.has-shapes::after {
+      content: "";
+      position: absolute;
+      left: 2px;
+      right: 2px;
+      bottom: 3px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--shape);
+    }
+
+    .range-frame.current {
+      outline: 2px solid var(--preview);
+      outline-offset: 1px;
+      z-index: 1;
+    }
+
+    .range-frame:disabled {
+      cursor: default;
+      opacity: 0.62;
+    }
+
+    .range-frame.source {
+      box-shadow: inset 0 0 0 2px var(--warn);
+    }
+
+    .source-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .source-list, .shape-list, .shortcut-list {
+      display: grid;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .source-item {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      padding: 8px;
+    }
+
+    .source-item input[type="checkbox"] {
+      margin-top: 3px;
+    }
+
+    .source-name {
+      font-weight: 600;
+      overflow-wrap: anywhere;
+      line-height: 1.35;
+    }
+
+    .source-meta {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      margin-top: 3px;
+    }
+
+    .badge {
+      display: inline-block;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      padding: 1px 7px;
+      font-size: 12px;
+      line-height: 18px;
+      color: var(--muted);
+      background: #fff;
+    }
+
+    .badge.ready {
+      border-color: #9ad0c8;
+      color: #075e55;
+      background: #e7f7f4;
+    }
+
+    .badge.warn {
+      border-color: #f3d47b;
+      color: var(--warn);
+      background: var(--warn-bg);
+    }
+
+    .shape-item {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      padding: 7px 8px;
+      cursor: pointer;
+      overflow-wrap: anywhere;
+    }
+
+    .shape-item.active {
+      border-color: var(--preview);
+      box-shadow: inset 3px 0 0 var(--preview);
+    }
+
+    .shape-role {
+      color: var(--preview);
+      font-size: 12px;
+      margin-left: 4px;
+    }
+
+    .shortcut-item {
+      display: grid;
+      grid-template-columns: 96px 1fr;
+      align-items: center;
+      gap: 8px;
+      min-height: 30px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .shortcut-key {
+      min-height: 28px;
+      border: 1px solid #c9d2df;
+      border-radius: 6px;
+      background: #f8fafc;
+      color: #243244;
+      cursor: pointer;
+      padding: 2px 6px;
+      text-align: center;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .shortcut-key.capturing {
+      border-color: var(--preview);
+      color: var(--preview);
+      background: #eef5ff;
+    }
+
+    kbd {
+      display: inline-block;
+      min-width: 24px;
+      border: 1px solid #c9d2df;
+      border-bottom-color: #aab6c5;
+      border-radius: 5px;
+      padding: 2px 6px;
+      background: #f8fafc;
+      color: #243244;
+      font-family: "Segoe UI", Arial, sans-serif;
+      font-size: 12px;
+      text-align: center;
+      box-shadow: inset 0 -1px 0 #d6dde8;
+    }
+
+    .key-pair {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .statusbar {
+      justify-content: space-between;
+      color: var(--muted);
+      min-height: 38px;
+    }
+
+    .statusbar span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    body {
+      background: #f3f5f4;
+      font-size: 13px;
+    }
+
+    .app {
+      grid-template-columns: 360px minmax(520px, 1fr) 300px;
+      min-width: 1160px;
+    }
+
+    aside, .right {
+      background: #fbfbfa;
+      padding: 14px;
+    }
+
+    main {
+      gap: 8px;
+      padding: 10px;
+    }
+
+    h1, h2 {
+      margin: 0;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+      color: #353c43;
+    }
+
+    .panel-head, .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .panel-count {
+      color: var(--muted);
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .source-field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .source-field + .source-field {
+      margin-top: 8px;
+    }
+
+    .input {
+      border-color: #dce1dd;
+      border-radius: 7px;
+      min-height: 32px;
+      padding: 6px 8px;
+      background: #fff;
+    }
+
+    .small-btn, .tool-btn, .icon-btn {
+      border-color: #dce1dd;
+      border-radius: 7px;
+      min-height: 32px;
+      background: #fff;
+    }
+
+    .small-btn.primary {
+      background: #1f5e57;
+      border-color: #1f5e57;
+    }
+
+    .topbar, .statusbar {
+      border-color: #dce1dd;
+      border-radius: 8px;
+      background: #fbfbfa;
+      padding: 7px 8px;
+    }
+
+    .frame-pill {
+      min-width: 58px;
+      color: #38424a;
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+    }
+
+    .frame-kind-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 54px;
+      min-height: 24px;
+      border-radius: 999px;
+      background: #edf1ef;
+      color: #58636c;
+      padding: 0 8px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .topbar.static input[type="range"] {
+      opacity: 0.42;
+      cursor: not-allowed;
+    }
+
+    .topbar input[type="range"] {
+      touch-action: none;
+    }
+
+    .workspace {
+      border: 0;
+      border-radius: 8px;
+      background: #dfe5e4;
+      padding: 10px;
+    }
+
+    canvas {
+      max-height: calc(100vh - 130px);
+      border-radius: 4px;
+      box-shadow: 0 10px 28px rgba(21, 28, 35, 0.16);
+    }
+
+    .source-actions {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .source-actions .small-btn {
+      padding: 0 6px;
+    }
+
+    .export-status {
+      display: grid;
+      gap: 4px;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .export-line {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      border-top: 1px solid #edf0ed;
+      padding-top: 5px;
+    }
+
+    .export-line.export-path {
+      grid-template-columns: 58px minmax(0, 1fr);
+    }
+
+    .export-line.export-path span {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      text-overflow: clip;
+    }
+
+    .export-progress {
+      display: grid;
+      gap: 6px;
+      border-top: 1px solid #edf0ed;
+      padding-top: 7px;
+    }
+
+    .export-progress-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .export-progress-bar {
+      height: 6px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #edf0ed;
+    }
+
+    .export-progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: var(--accent);
+      transition: width 160ms ease;
+    }
+
+    .export-line strong, .export-line span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .source-list {
+      gap: 5px;
+      margin-top: 0;
+    }
+
+    .source-item {
+      grid-template-columns: 20px minmax(0, 1fr) 72px;
+      gap: 8px;
+      border-color: transparent;
+      border-radius: 8px;
+      background: #fff;
+      padding: 8px;
+      box-shadow: inset 0 0 0 1px #e7ebe7;
+    }
+
+    .source-item.selectable {
+      cursor: pointer;
+    }
+
+    .source-item.current {
+      box-shadow: inset 0 0 0 1px #1f5e57, inset 3px 0 0 #1f5e57;
+      background: #f8fbfa;
+    }
+
+    .source-name {
+      font-size: 13px;
+      font-weight: 650;
+      color: #20272d;
+    }
+
+    .source-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 5px;
+      line-height: 1.2;
+    }
+
+    .source-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+      border-radius: 999px;
+      background: #f0f3f1;
+      color: #58636c;
+      padding: 0 7px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .source-pill.strong {
+      background: #e2f1ed;
+      color: #15564e;
+    }
+
+    .source-pill.warn {
+      background: #fff2cc;
+      color: #765100;
+    }
+
+    .source-pill.done {
+      background: #ddece7;
+      color: #164e44;
+    }
+
+    .source-pill.pending {
+      background: #eef0f2;
+      color: #69737c;
+    }
+
+    .source-command {
+      min-width: 0;
+      padding: 0 6px;
+      font-size: 12px;
+    }
+
+    .group {
+      border-top-color: #e3e7e3;
+      margin-top: 12px;
+      padding-top: 12px;
+    }
+
+    .right .group:first-of-type {
+      margin-top: 10px;
+    }
+
+    .tool-grid {
+      grid-template-columns: 1fr;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .tool-btn {
+      padding: 6px 8px;
+    }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .action-grid .small-btn {
+      padding: 0 8px;
+    }
+
+    .range-panel {
+      gap: 8px;
+    }
+
+    .range-hint {
+      color: var(--muted);
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .range-readout {
+      grid-template-columns: 1.2fr 0.8fr 0.8fr;
+      gap: 5px;
+    }
+
+    .range-metric.source-metric {
+      grid-column: auto;
+    }
+
+    .range-metric {
+      border-color: #e3e7e3;
+      background: #f7f8f6;
+      padding: 6px 7px;
+    }
+
+    .range-actions {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .range-actions .small-btn {
+      padding: 0 4px;
+    }
+
+    .range-frame-strip {
+      border-color: #e3e7e3;
+      background: #edf1ef;
+    }
+
+    .shortcut-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 5px 8px;
+      margin-top: 8px;
+    }
+
+    .shortcut-item {
+      grid-template-columns: 1fr;
+      gap: 3px;
+      min-height: 42px;
+      align-content: start;
+    }
+
+    .shortcut-key {
+      width: 100%;
+      min-height: 28px;
+      background: #f7f8f6;
+    }
+
+    .shortcut-item span:last-child {
+      color: #5f6870;
+      font-size: 12px;
+    }
+
+    kbd {
+      min-width: 22px;
+      border-radius: 5px;
+      padding: 1px 5px;
+      background: #f7f8f6;
+      font-size: 11px;
+      box-shadow: none;
+    }
+
+    .shape-list {
+      margin-top: 8px;
+    }
+
+    .shape-item {
+      border-color: #e3e7e3;
+      border-radius: 7px;
+      padding: 6px 8px;
+    }
+
+    #fileList[hidden] {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="panel-head">
+        <h1>素材</h1>
+        <span id="directoryMeta" class="panel-count"></span>
+      </div>
+      <div class="source-field">
+        <label for="sourceDirInput">源目录</label>
+        <input id="sourceDirInput" class="input" type="text" spellcheck="false">
+      </div>
+      <div class="source-field">
+        <label for="outputDirInput">输出目录</label>
+        <input id="outputDirInput" class="input" type="text" spellcheck="false">
+      </div>
+      <div class="source-actions">
+        <button id="saveDirBtn" class="small-btn primary">保存目录</button>
+        <button id="refreshBtn" class="small-btn">刷新</button>
+        <button id="selectAllSourcesBtn" class="small-btn">全选</button>
+        <button id="extractSelectedBtn" class="small-btn">加载选中</button>
+        <button id="exportSelectedBtn" class="small-btn primary" title="保存标注并导出压缩 WebP">导出</button>
+      </div>
+      <div id="exportStatus" class="export-status"></div>
+
+      <div class="group">
+        <div class="section-head">
+          <h2>文件</h2>
+        </div>
+        <div id="sourceFileList" class="source-list"></div>
+      </div>
+
+      <div id="fileList" hidden></div>
+    </aside>
+
+    <main>
+      <div id="topbar" class="topbar">
+        <button id="prevBtn" class="icon-btn" title="上一帧" aria-label="上一帧">←</button>
+        <input id="frameSlider" type="range" min="0" value="0">
+        <button id="nextBtn" class="icon-btn" title="下一帧" aria-label="下一帧">→</button>
+        <span id="frameText" class="frame-pill">0 / 0</span>
+        <span id="frameKindText" class="frame-kind-pill">图片</span>
+      </div>
+
+      <div class="workspace">
+        <canvas id="canvas" width="1" height="1"></canvas>
+      </div>
+
+      <div class="statusbar">
+        <span id="status">加载中</span>
+        <span id="saveState">未保存</span>
+      </div>
+    </main>
+
+    <section class="right">
+      <div class="panel-head">
+        <h2>编辑</h2>
+      </div>
+      <div class="tool-grid">
+        <button id="rectTool" class="tool-btn active">矩形</button>
+      </div>
+
+      <div class="action-grid">
+        <button id="cancelBtn" class="small-btn">取消</button>
+        <button id="undoBtn" class="small-btn">撤销</button>
+        <button id="completeBtn" class="small-btn">无需打码</button>
+        <button id="saveBtn" class="small-btn primary">保存标注</button>
+        <button id="deleteBtn" class="small-btn danger">删除选中</button>
+        <button id="clearBtn" class="small-btn danger">清空本帧</button>
+      </div>
+
+      <div class="group">
+        <div class="section-head">
+          <h2>范围</h2>
+          <span id="rangeHint" class="range-hint">先画矩形</span>
+        </div>
+        <div class="range-panel">
+          <div class="range-readout">
+            <div class="range-metric source-metric">
+              <span>当前矩形</span>
+              <strong id="rangeSourceText">第 1 帧</strong>
+            </div>
+            <div class="range-metric">
+              <span>作用帧</span>
+              <strong id="rangeSpanText">1-1</strong>
+            </div>
+            <div class="range-metric">
+              <span>帧数</span>
+              <strong id="rangeCountText">1 帧</strong>
+            </div>
+          </div>
+          <div id="rangeTimeline" class="range-timeline">
+            <div class="range-track">
+              <div id="rangeSelection" class="range-selection"></div>
+            </div>
+            <div id="rangeSource" class="range-source"></div>
+            <div id="rangeCurrent" class="range-current"></div>
+            <button id="rangeStartHandle" class="range-handle" data-label="起" type="button" aria-label="范围起点"></button>
+            <button id="rangeEndHandle" class="range-handle" data-label="止" type="button" aria-label="范围终点"></button>
+          </div>
+          <div id="rangeFrameStrip" class="range-frame-strip"></div>
+          <div class="range-actions">
+            <button id="setRangeSourceBtn" class="small-btn">选本帧矩形</button>
+            <button id="setRangeStartBtn" class="small-btn">设为开始</button>
+            <button id="setRangeEndBtn" class="small-btn">设为结束</button>
+            <button id="setWholeRangeBtn" class="small-btn">整段覆盖</button>
+          </div>
+          <button id="applyRangeBtn" class="small-btn primary">应用当前矩形到这些帧</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="section-head">
+          <h2>快捷键</h2>
+          <button id="resetShortcutsBtn" class="small-btn">重置</button>
+        </div>
+        <div id="shortcutList" class="shortcut-list"></div>
+      </div>
+
+      <div class="group">
+        <div class="section-head">
+          <h2>本帧区域</h2>
+        </div>
+        <div id="shapeList" class="shape-list"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const sourceDirInput = document.getElementById('sourceDirInput');
+    const outputDirInput = document.getElementById('outputDirInput');
+    const sourceFileList = document.getElementById('sourceFileList');
+    const directoryMeta = document.getElementById('directoryMeta');
+    const exportStatus = document.getElementById('exportStatus');
+    const selectAllSourcesBtn = document.getElementById('selectAllSourcesBtn');
+    const fileList = document.getElementById('fileList');
+    const topbar = document.getElementById('topbar');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const frameSlider = document.getElementById('frameSlider');
+    const frameText = document.getElementById('frameText');
+    const frameKindText = document.getElementById('frameKindText');
+    const statusEl = document.getElementById('status');
+    const saveState = document.getElementById('saveState');
+    const shapeList = document.getElementById('shapeList');
+    const rangeTimeline = document.getElementById('rangeTimeline');
+    const rangeSelection = document.getElementById('rangeSelection');
+    const rangeSource = document.getElementById('rangeSource');
+    const rangeCurrent = document.getElementById('rangeCurrent');
+    const rangeStartHandle = document.getElementById('rangeStartHandle');
+    const rangeEndHandle = document.getElementById('rangeEndHandle');
+    const rangeFrameStrip = document.getElementById('rangeFrameStrip');
+    const rangeSourceText = document.getElementById('rangeSourceText');
+    const rangeSpanText = document.getElementById('rangeSpanText');
+    const rangeCountText = document.getElementById('rangeCountText');
+    const rangeHint = document.getElementById('rangeHint');
+    const undoBtn = document.getElementById('undoBtn');
+    const completeBtn = document.getElementById('completeBtn');
+    const shortcutList = document.getElementById('shortcutList');
+    const resetShortcutsBtn = document.getElementById('resetShortcutsBtn');
+    const HISTORY_LIMIT = 40;
+    const AUTO_SAVE_DELAY = 300;
+    const SHORTCUT_STORAGE_KEY = 'remaskShortcuts.v1';
+    const SHORTCUT_ITEMS = [
+      ['prevFrame', '上一帧'],
+      ['nextFrame', '下一帧'],
+      ['prevFile', '上一张'],
+      ['nextFile', '下一张'],
+      ['toggleComplete', '完成并下一张'],
+      ['rangeStart', '设开始'],
+      ['rangeEnd', '设结束'],
+      ['applyRange', '应用当前矩形'],
+      ['undo', '撤销'],
+      ['cancel', '取消绘制'],
+      ['delete', '删除选中'],
+      ['save', '保存']
+    ];
+    const DEFAULT_SHORTCUTS = {
+      prevFrame: 'ArrowLeft',
+      nextFrame: 'ArrowRight',
+      prevFile: 'ArrowUp',
+      nextFile: 'ArrowDown',
+      toggleComplete: 'F',
+      rangeStart: '[',
+      rangeEnd: ']',
+      applyRange: 'Enter',
+      undo: 'Ctrl+Z',
+      cancel: 'Escape',
+      delete: 'Delete',
+      save: 'Ctrl+S'
+    };
+
+    const state = {
+      workspace: null,
+      files: [],
+      activeFile: 0,
+      frame: 0,
+      annotations: { version: 1, files: {} },
+      image: new Image(),
+      drawing: null,
+      drawingAdditive: false,
+      pendingSelection: null,
+      resizing: null,
+      selectedId: null,
+      selectedIds: [],
+      dirty: false,
+      savedSnapshot: '',
+      history: [],
+      saveTimer: null,
+      savePromise: Promise.resolve(),
+      saving: false,
+      saveError: false,
+      lastSavePath: '',
+      busy: false,
+      rangeSource: 0,
+      rangeSourceLocked: false,
+      rangeShapeIds: [],
+      rangeStart: 0,
+      rangeEnd: 0,
+      activeRangeHandle: null,
+      frameSliderDragging: false,
+      drawingPointerId: null,
+      scrollSourceIntoView: false,
+      shortcuts: { ...DEFAULT_SHORTCUTS },
+      capturingShortcut: null
+    };
+    const RECT_MIN_SIZE = 4;
+
+    function uid() {
+      return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    function loadShortcuts() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(SHORTCUT_STORAGE_KEY) || '{}');
+        state.shortcuts = { ...DEFAULT_SHORTCUTS };
+        for (const [action] of SHORTCUT_ITEMS) {
+          if (typeof stored[action] === 'string') state.shortcuts[action] = stored[action];
+        }
+      } catch {
+        state.shortcuts = { ...DEFAULT_SHORTCUTS };
+      }
+    }
+
+    function saveShortcuts() {
+      try {
+        localStorage.setItem(SHORTCUT_STORAGE_KEY, JSON.stringify(state.shortcuts));
+      } catch {
+        // Shortcut customization is local convenience; annotation saving is unaffected.
+      }
+    }
+
+    function formatShortcut(combo) {
+      if (!combo) return '未设';
+      return combo
+        .replace('ArrowLeft', '←')
+        .replace('ArrowRight', '→')
+        .replace('ArrowUp', '↑')
+        .replace('ArrowDown', '↓')
+        .replace('Escape', 'Esc')
+        .replace('Delete', 'Del')
+        .replace('Backspace', 'Back')
+        .replace(' ', 'Space');
+    }
+
+    function shortcutForEvent(evt) {
+      if (['Control', 'Shift', 'Alt', 'Meta'].includes(evt.key)) return '';
+      const parts = [];
+      if (evt.ctrlKey || evt.metaKey) parts.push('Ctrl');
+      if (evt.altKey) parts.push('Alt');
+      if (evt.shiftKey) parts.push('Shift');
+      let key = evt.key;
+      if (key.length === 1) key = key.toUpperCase();
+      if (key === ' ') key = 'Space';
+      parts.push(key);
+      return parts.join('+');
+    }
+
+    function shortcutMatches(evt, action) {
+      return Boolean(state.shortcuts[action]) && shortcutForEvent(evt) === state.shortcuts[action];
+    }
+
+    function setShortcut(action, combo) {
+      for (const [otherAction] of SHORTCUT_ITEMS) {
+        if (otherAction !== action && state.shortcuts[otherAction] === combo) {
+          state.shortcuts[otherAction] = '';
+        }
+      }
+      state.shortcuts[action] = combo;
+      state.capturingShortcut = null;
+      saveShortcuts();
+      renderShortcutList();
+      const label = SHORTCUT_ITEMS.find(([key]) => key === action)?.[1] || action;
+      statusEl.textContent = `${label} 快捷键：${formatShortcut(combo)}`;
+    }
+
+    function renderShortcutList() {
+      shortcutList.innerHTML = '';
+      for (const [action, label] of SHORTCUT_ITEMS) {
+        const item = document.createElement('div');
+        item.className = 'shortcut-item';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `shortcut-key${state.capturingShortcut === action ? ' capturing' : ''}`;
+        button.textContent = state.capturingShortcut === action ? '按键...' : formatShortcut(state.shortcuts[action]);
+        button.title = '点击后按新的快捷键';
+        button.addEventListener('click', () => {
+          state.capturingShortcut = action;
+          renderShortcutList();
+          statusEl.textContent = `设置 ${label} 快捷键`;
+        });
+        const text = document.createElement('span');
+        text.textContent = label;
+        item.appendChild(button);
+        item.appendChild(text);
+        shortcutList.appendChild(item);
+      }
+    }
+
+    function formatBytes(bytes) {
+      const units = ['B', 'KB', 'MB', 'GB'];
+      let value = Number(bytes) || 0;
+      let unit = 0;
+      while (value >= 1024 && unit < units.length - 1) {
+        value /= 1024;
+        unit += 1;
+      }
+      return `${value.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
+    }
+
+    function sourceKindLabel(kind) {
+      if (kind === 'animated') return '动图';
+      if (kind === 'static') return '静态图';
+      return '图片';
+    }
+
+    function currentFile() {
+      return state.files[state.activeFile] || null;
+    }
+
+    function isSingleFrame(file = currentFile()) {
+      return !file || file.frameCount <= 1;
+    }
+
+    function fileKindText(file = currentFile()) {
+      if (!file) return '图片';
+      return isSingleFrame(file) ? '静态图' : '动图';
+    }
+
+    function syncFrameControls() {
+      const file = currentFile();
+      const disabled = !file || isSingleFrame(file) || state.busy;
+      frameSlider.disabled = disabled;
+      prevBtn.disabled = disabled;
+      nextBtn.disabled = disabled;
+      topbar.classList.toggle('static', !file || isSingleFrame(file));
+      frameKindText.textContent = fileKindText(file);
+    }
+
+    function fileIndexForSource(sourceId) {
+      return state.files.findIndex(file => file.id === sourceId);
+    }
+
+    function fileStore(fileId = currentFile()?.id) {
+      if (!fileId) return { frames: {} };
+      if (!state.annotations.files[fileId]) {
+        state.annotations.files[fileId] = { frames: {} };
+      }
+      return state.annotations.files[fileId];
+    }
+
+    function frameShapes(fileId = currentFile()?.id, frame = state.frame) {
+      if (!fileId) return [];
+      const store = fileStore(fileId);
+      const key = String(frame);
+      if (!store.frames[key]) store.frames[key] = [];
+      return store.frames[key];
+    }
+
+    function readFrameShapes(fileId = currentFile()?.id, frame = state.frame) {
+      if (!fileId) return [];
+      const shapes = state.annotations.files?.[fileId]?.frames?.[String(frame)];
+      return Array.isArray(shapes) ? shapes : [];
+    }
+
+    function cloneAnnotations(data = state.annotations) {
+      return JSON.parse(JSON.stringify(data || { version: 1, files: {} }));
+    }
+
+    function annotationsSnapshot(data = state.annotations) {
+      return JSON.stringify(data || { version: 1, files: {} });
+    }
+
+    function updateSaveIndicator() {
+      if (state.saving) saveState.textContent = '保存中';
+      else if (state.saveError) saveState.textContent = '保存失败';
+      else if (state.dirty) saveState.textContent = '待自动保存';
+      else saveState.textContent = '已保存';
+    }
+
+    function clearPendingAutoSave() {
+      if (!state.saveTimer) return;
+      clearTimeout(state.saveTimer);
+      state.saveTimer = null;
+    }
+
+    function scheduleAutoSave(delay = AUTO_SAVE_DELAY) {
+      if (!state.dirty || state.saving) return;
+      clearPendingAutoSave();
+      state.saveTimer = setTimeout(() => {
+        state.saveTimer = null;
+        saveAnnotations({ quiet: true, auto: true }).catch(error => {
+          console.error(error);
+          statusEl.textContent = `自动保存失败：${error.message}`;
+        });
+      }, delay);
+    }
+
+    function markDirtyFromSnapshot(options = {}) {
+      setDirty(annotationsSnapshot() !== state.savedSnapshot, options);
+    }
+
+    function pushHistory(label = '') {
+      state.history.push({
+        annotations: cloneAnnotations(),
+        fileId: currentFile()?.id || '',
+        frame: state.frame,
+        selectedId: state.selectedId,
+        selectedIds: selectedIds(),
+        rangeSource: state.rangeSource,
+        rangeSourceLocked: state.rangeSourceLocked,
+        rangeShapeIds: [...state.rangeShapeIds],
+        rangeStart: state.rangeStart,
+        rangeEnd: state.rangeEnd,
+        label
+      });
+      if (state.history.length > HISTORY_LIMIT) state.history.shift();
+      renderActionControls();
+    }
+
+    function countFileShapes(fileId) {
+      const frames = state.annotations.files?.[fileId]?.frames || {};
+      return Object.values(frames).reduce((total, shapes) => total + (Array.isArray(shapes) ? shapes.length : 0), 0);
+    }
+
+    function countAnnotatedFrames(fileId) {
+      const frames = state.annotations.files?.[fileId]?.frames || {};
+      return Object.values(frames).filter(shapes => Array.isArray(shapes) && shapes.length).length;
+    }
+
+    function isFileComplete(fileId) {
+      return Boolean(state.annotations.files?.[fileId]?.complete);
+    }
+
+    function fileCompletionLabel(fileId) {
+      if (!isFileComplete(fileId)) return '';
+      return countFileShapes(fileId) ? '已完成' : '无需打码';
+    }
+
+    function clearFileCompletion(fileId = currentFile()?.id) {
+      if (!fileId) return;
+      const store = fileStore(fileId);
+      if (!store.complete) return;
+      delete store.complete;
+      delete store.completeReason;
+      delete store.completedAt;
+    }
+
+    function markCurrentFileEdited() {
+      clearFileCompletion();
+    }
+
+    function renderActionControls() {
+      if (undoBtn) undoBtn.disabled = state.busy || !state.history.length;
+      if (!completeBtn) return;
+      const file = currentFile();
+      completeBtn.disabled = state.busy || !file;
+      if (!file) {
+        completeBtn.textContent = '无需打码';
+        completeBtn.title = '';
+        return;
+      }
+      if (isFileComplete(file.id)) {
+        completeBtn.textContent = '取消完成';
+        completeBtn.title = '快捷键 F：把当前文件恢复为未完成';
+      } else if (countFileShapes(file.id)) {
+        completeBtn.textContent = '标为完成';
+        completeBtn.title = '快捷键 F：标为完成并跳到下一张';
+      } else {
+        completeBtn.textContent = '无需打码';
+        completeBtn.title = '快捷键 F：标为完成并跳到下一张';
+      }
+    }
+
+    function undoLast() {
+      const entry = state.history.pop();
+      if (!entry) {
+        statusEl.textContent = '没有可撤销的操作';
+        renderActionControls();
+        return;
+      }
+      state.annotations = cloneAnnotations(entry.annotations);
+      const nextIndex = state.files.findIndex(file => file.id === entry.fileId);
+      if (nextIndex >= 0) state.activeFile = nextIndex;
+      state.frame = entry.frame || 0;
+      state.selectedId = entry.selectedId || null;
+      state.selectedIds = entry.selectedIds?.length ? [...entry.selectedIds] : (entry.selectedId ? [entry.selectedId] : []);
+      syncPrimarySelection();
+      state.rangeSource = entry.rangeSource || 0;
+      state.rangeSourceLocked = Boolean(entry.rangeSourceLocked);
+      state.rangeShapeIds = [...(entry.rangeShapeIds || [])];
+      state.rangeStart = entry.rangeStart || 0;
+      state.rangeEnd = entry.rangeEnd || 0;
+      resetCanvasInteraction();
+      markDirtyFromSnapshot();
+      renderDirectoryMeta();
+      renderFileList();
+      renderActionControls();
+      const file = currentFile();
+      if (file) {
+        state.frame = Math.max(0, Math.min(file.frameCount - 1, state.frame));
+        frameSlider.max = file.frameCount - 1;
+        frameSlider.value = state.frame;
+        syncFrameControls();
+        renderRangeControls();
+        loadFrameImage();
+      } else {
+        clearCanvas('没有帧');
+      }
+      statusEl.textContent = entry.label ? `已撤销：${entry.label}` : '已撤销';
+    }
+
+    function setCurrentFileComplete(complete) {
+      const file = currentFile();
+      if (!file) return;
+      pushHistory(complete ? '标记完成' : '取消完成');
+      const store = fileStore(file.id);
+      if (complete) {
+        store.complete = true;
+        store.completeReason = countFileShapes(file.id) ? 'reviewed' : 'no_censor';
+        store.completedAt = new Date().toISOString();
+      } else {
+        delete store.complete;
+        delete store.completeReason;
+        delete store.completedAt;
+      }
+      setDirty(true);
+      renderDirectoryMeta();
+      renderFileList();
+      renderActionControls();
+      statusEl.textContent = complete
+        ? `${file.name} · ${fileCompletionLabel(file.id)}`
+        : `${file.name} · 已取消完成`;
+    }
+
+    function toggleCurrentFileComplete() {
+      const file = currentFile();
+      if (!file) return;
+      setCurrentFileComplete(!isFileComplete(file.id));
+    }
+
+    function completeCurrentFileAndAdvance() {
+      const file = currentFile();
+      if (!file) return;
+      if (isFileComplete(file.id)) {
+        setCurrentFileComplete(false);
+        return;
+      }
+      setCurrentFileComplete(true);
+      if (state.activeFile < state.files.length - 1) {
+        selectFile(state.activeFile + 1, { scrollSource: true });
+      }
+    }
+
+    function isRangeShape(shape) {
+      return shape?.type === 'rect' && Array.isArray(shape.points) && shape.points.length >= 2;
+    }
+
+    function shapeTrackId(shape) {
+      return shape?.trackId || shape?.id || '';
+    }
+
+    function ensureShapeTrack(shape) {
+      if (!shape.trackId) shape.trackId = shape.id || uid();
+      return shape.trackId;
+    }
+
+    function shapeMatchesRangeSelection(shape, wanted) {
+      return wanted.has(shape.id) || wanted.has(shapeTrackId(shape));
+    }
+
+    function selectedIds() {
+      return [...new Set([...(state.selectedIds || []), state.selectedId].filter(Boolean))];
+    }
+
+    function syncPrimarySelection() {
+      state.selectedIds = [...new Set(state.selectedIds || [])];
+      state.selectedId = state.selectedIds[state.selectedIds.length - 1] || null;
+    }
+
+    function selectedFrameShapes() {
+      const wanted = new Set(selectedIds());
+      if (!wanted.size) return [];
+      return readFrameShapes().filter(shape => wanted.has(shape.id));
+    }
+
+    function isShapeSelected(shape) {
+      return selectedIds().includes(shape.id);
+    }
+
+    function clearSelection() {
+      state.selectedId = null;
+      state.selectedIds = [];
+      state.rangeShapeIds = [];
+    }
+
+    function captureRangeShapes(frame = state.frame) {
+      const file = currentFile();
+      if (!file) return [];
+      const shapes = readFrameShapes(file.id, frame).filter(isRangeShape);
+      const wanted = new Set(selectedIds());
+      const selected = wanted.size ? shapes.filter(shape => wanted.has(shape.id)) : [];
+      const nextShapes = selected.length ? selected : shapes;
+      state.rangeShapeIds = nextShapes.map(ensureShapeTrack);
+      return nextShapes;
+    }
+
+    function rangeForShapes(shapes) {
+      const file = currentFile();
+      const trackIds = shapes.filter(isRangeShape).map(ensureShapeTrack);
+      if (!file || !trackIds.length) return [state.frame, state.frame];
+      const wanted = new Set(trackIds);
+      let first = null;
+      let last = null;
+      const frames = state.annotations.files?.[file.id]?.frames || {};
+      for (const [frameKey, frameShapes] of Object.entries(frames)) {
+        if (!Array.isArray(frameShapes)) continue;
+        const hasTrack = frameShapes.some(item => isRangeShape(item) && wanted.has(shapeTrackId(item)));
+        if (!hasTrack) continue;
+        const frame = clampFrameIndex(Number(frameKey));
+        first = first === null ? frame : Math.min(first, frame);
+        last = last === null ? frame : Math.max(last, frame);
+      }
+      return [first ?? state.frame, last ?? state.frame];
+    }
+
+    function selectRangeShapes(shapes) {
+      const nextShapes = shapes.filter(Boolean);
+      state.selectedIds = nextShapes.map(shape => shape.id);
+      syncPrimarySelection();
+      const rangeShapes = nextShapes.filter(isRangeShape);
+      if (rangeShapes.length) {
+        state.rangeSource = clampFrameIndex(state.frame);
+        state.rangeSourceLocked = true;
+        state.rangeShapeIds = rangeShapes.map(ensureShapeTrack);
+        const [start, end] = rangeForShapes(rangeShapes);
+        state.rangeStart = start;
+        state.rangeEnd = end;
+      } else {
+        state.rangeShapeIds = [];
+      }
+    }
+
+    function selectRangeShape(shape, options = {}) {
+      if (!shape) {
+        clearSelection();
+        return;
+      }
+      if (!options.additive) {
+        selectRangeShapes([shape]);
+        return;
+      }
+
+      const current = selectedFrameShapes();
+      const alreadySelected = current.some(item => item.id === shape.id);
+      const nextShapes = alreadySelected
+        ? current.filter(item => item.id !== shape.id)
+        : [...current, shape];
+      selectRangeShapes(nextShapes);
+    }
+
+    function rangeSourceShapes() {
+      const file = currentFile();
+      if (!file) return [];
+      const sourceFrame = clampFrameIndex(state.rangeSource);
+      const shapes = readFrameShapes(file.id, sourceFrame).filter(isRangeShape);
+      if (!state.rangeShapeIds.length) return shapes;
+      const wanted = new Set(state.rangeShapeIds);
+      return shapes.filter(shape => shapeMatchesRangeSelection(shape, wanted));
+    }
+
+    function cloneShapeForRange(shape) {
+      const trackId = ensureShapeTrack(shape);
+      return {
+        ...shape,
+        id: uid(),
+        trackId,
+        points: shape.points.map(point => ({ ...point }))
+      };
+    }
+
+    function rangePreviewShapes() {
+      const file = currentFile();
+      if (!file || isSingleFrame(file)) return [];
+      const [start, end] = normalizedRange();
+      if (state.frame < start || state.frame > end) return [];
+      const sourceShapes = rangeSourceShapes();
+      if (!sourceShapes.length) return [];
+      const currentTracks = new Set(readFrameShapes(file.id, state.frame).filter(isRangeShape).map(shapeTrackId));
+      return sourceShapes.filter(shape => !currentTracks.has(shapeTrackId(shape)));
+    }
+
+    function adoptCurrentFrameShapeIfNeeded() {
+      const file = currentFile();
+      if (!file || rangeSourceShapes().length) return;
+      const shapes = readFrameShapes(file.id, state.frame).filter(isRangeShape);
+      if (!shapes.length) return;
+      state.rangeSource = clampFrameIndex(state.frame);
+      state.rangeSourceLocked = true;
+      state.rangeShapeIds = [ensureShapeTrack(shapes[shapes.length - 1])];
+      state.selectedIds = [shapes[shapes.length - 1].id];
+      syncPrimarySelection();
+    }
+
+    function pointInRectShape(point, shape) {
+      if (!isRangeShape(shape)) return false;
+      const [a, b] = shape.points;
+      const left = Math.min(a.x, b.x);
+      const right = Math.max(a.x, b.x);
+      const top = Math.min(a.y, b.y);
+      const bottom = Math.max(a.y, b.y);
+      return point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
+    }
+
+    function pickShapeAt(point) {
+      return [...readFrameShapes()].reverse().find(shape => pointInRectShape(point, shape)) || null;
+    }
+
+    function rectBounds(shape) {
+      const [a, b] = shape.points;
+      return {
+        left: Math.min(a.x, b.x),
+        right: Math.max(a.x, b.x),
+        top: Math.min(a.y, b.y),
+        bottom: Math.max(a.y, b.y)
+      };
+    }
+
+    function rectCorners(shape) {
+      const { left, right, top, bottom } = rectBounds(shape);
+      return [
+        { key: 'nw', x: left, y: top, cursor: 'nwse-resize' },
+        { key: 'ne', x: right, y: top, cursor: 'nesw-resize' },
+        { key: 'se', x: right, y: bottom, cursor: 'nwse-resize' },
+        { key: 'sw', x: left, y: bottom, cursor: 'nesw-resize' }
+      ];
+    }
+
+    function oppositeCorner(corner, shape) {
+      const { left, right, top, bottom } = rectBounds(shape);
+      if (corner === 'nw') return { x: right, y: bottom };
+      if (corner === 'ne') return { x: left, y: bottom };
+      if (corner === 'se') return { x: left, y: top };
+      return { x: right, y: top };
+    }
+
+    function handleRadius() {
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return 6;
+      const scale = Math.max(canvas.width / rect.width, canvas.height / rect.height);
+      return Math.max(5, Math.min(16, Math.round(scale * 5)));
+    }
+
+    function handleHitRadius() {
+      return handleRadius() + 6;
+    }
+
+    function pickResizeHandleAt(point) {
+      const selected = new Set(selectedIds());
+      if (!selected.size) return null;
+      const hitRadius = handleHitRadius();
+      const shapes = [...readFrameShapes()].reverse().filter(shape => selected.has(shape.id) && isRangeShape(shape));
+      for (const shape of shapes) {
+        for (const corner of rectCorners(shape)) {
+          if (Math.hypot(point.x - corner.x, point.y - corner.y) <= hitRadius) {
+            return { shape, corner };
+          }
+        }
+      }
+      return null;
+    }
+
+    function rectLargeEnough(a, b) {
+      return Math.abs(a.x - b.x) >= RECT_MIN_SIZE && Math.abs(a.y - b.y) >= RECT_MIN_SIZE;
+    }
+
+    function dragStarted(a, b) {
+      return Math.abs(a.x - b.x) >= RECT_MIN_SIZE || Math.abs(a.y - b.y) >= RECT_MIN_SIZE;
+    }
+
+    function resetCanvasInteraction() {
+      state.drawing = null;
+      state.drawingAdditive = false;
+      state.pendingSelection = null;
+      state.resizing = null;
+      canvas.style.cursor = '';
+    }
+
+    function setDirty(value, options = {}) {
+      state.dirty = value;
+      if (value) state.saveError = false;
+      else clearPendingAutoSave();
+      updateSaveIndicator();
+      renderActionControls();
+      if (value && options.autoSave !== false) scheduleAutoSave();
+    }
+
+    function setBusy(value, message = '') {
+      state.busy = value;
+      if (message) statusEl.textContent = message;
+      document.querySelectorAll('button').forEach(button => {
+        if (button.id !== 'saveBtn') button.disabled = value;
+      });
+      if (value) {
+        frameSlider.disabled = true;
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+      } else {
+        syncFrameControls();
+        renderRangeControls();
+        renderActionControls();
+      }
+    }
+
+    async function apiJson(url, options = {}) {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(options.headers || {})
+        }
+      });
+      const raw = await response.text();
+      let data = {};
+      if (raw) {
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          data = { ok: false, error: raw.slice(0, 160) };
+        }
+      }
+      if (!response.ok || data.ok === false) {
+        const error = new Error(data.error || `${response.status} ${response.statusText}`);
+        error.status = response.status;
+        throw error;
+      }
+      return data;
+    }
+
+    function setTool() {
+      resetCanvasInteraction();
+      document.getElementById('rectTool').classList.add('active');
+      draw();
+    }
+
+    function canvasPoint(evt) {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.round((evt.clientX - rect.left) * canvas.width / rect.width);
+      const y = Math.round((evt.clientY - rect.top) * canvas.height / rect.height);
+      return {
+        x: Math.max(0, Math.min(canvas.width, x)),
+        y: Math.max(0, Math.min(canvas.height, y))
+      };
+    }
+
+    function clampFrameIndex(frame) {
+      const file = currentFile();
+      if (!file) return 0;
+      return Math.max(0, Math.min(file.frameCount - 1, Math.round(frame)));
+    }
+
+    function frameFromSliderEvent(evt) {
+      const file = currentFile();
+      if (!file || isSingleFrame(file)) return 0;
+      const rect = frameSlider.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (evt.clientX - rect.left) / Math.max(1, rect.width)));
+      return clampFrameIndex(ratio * (file.frameCount - 1));
+    }
+
+    function normalizedRange() {
+      return [
+        Math.min(state.rangeStart, state.rangeEnd),
+        Math.max(state.rangeStart, state.rangeEnd)
+      ];
+    }
+
+    function setRange(start, end) {
+      state.rangeStart = clampFrameIndex(start);
+      state.rangeEnd = clampFrameIndex(end);
+      renderRangeControls();
+      draw();
+    }
+
+    function percentForFrame(frame) {
+      const file = currentFile();
+      if (!file || file.frameCount <= 1) return 0;
+      return clampFrameIndex(frame) / (file.frameCount - 1) * 100;
+    }
+
+    function frameFromTimelineEvent(evt) {
+      const track = rangeTimeline.querySelector('.range-track');
+      const rect = track.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (evt.clientX - rect.left) / Math.max(1, rect.width)));
+      const file = currentFile();
+      return clampFrameIndex(ratio * ((file?.frameCount || 1) - 1));
+    }
+
+    function updateRangeHandle(handle, evt) {
+      const frame = frameFromTimelineEvent(evt);
+      if (handle === 'start') setRange(frame, state.rangeEnd);
+      if (handle === 'end') setRange(state.rangeStart, frame);
+    }
+
+    function setNearestRangeHandle(evt) {
+      const frame = frameFromTimelineEvent(evt);
+      const startDistance = Math.abs(frame - state.rangeStart);
+      const endDistance = Math.abs(frame - state.rangeEnd);
+      if (startDistance <= endDistance) setRange(frame, state.rangeEnd);
+      else setRange(state.rangeStart, frame);
+    }
+
+    function renderRangeFrameStrip() {
+      const file = currentFile();
+      rangeFrameStrip.innerHTML = '';
+      if (!file) {
+        rangeFrameStrip.style.gridTemplateColumns = '';
+        return;
+      }
+
+      const [start, end] = normalizedRange();
+      const sourceTracks = new Set(rangeSourceShapes().map(shapeTrackId));
+      rangeFrameStrip.style.gridTemplateColumns = `repeat(${file.frameCount}, minmax(2px, 1fr))`;
+      for (let frame = 0; frame < file.frameCount; frame++) {
+        const button = document.createElement('button');
+        const classes = ['range-frame'];
+        const frameShapes = readFrameShapes(file.id, frame);
+        const frameTracks = new Set(frameShapes.filter(isRangeShape).map(shapeTrackId));
+        const willApply = frame >= start && frame <= end && [...sourceTracks].some(trackId => !frameTracks.has(trackId));
+        if (frame >= start && frame <= end) classes.push('in-range');
+        if (willApply) classes.push('will-apply');
+        if (frame === state.rangeSource) classes.push('source');
+        if (frame === state.frame) classes.push('current');
+        if (frameShapes.length) classes.push('has-shapes');
+        button.className = classes.join(' ');
+        button.type = 'button';
+        button.disabled = isSingleFrame(file) || state.busy;
+        button.title = willApply ? `第 ${frame + 1} 帧 · 待应用` : `第 ${frame + 1} 帧`;
+        button.addEventListener('click', () => setFrame(frame));
+        rangeFrameStrip.appendChild(button);
+      }
+    }
+
+    function renderRangeControls() {
+      const file = currentFile();
+      const singleFrame = isSingleFrame(file);
+      const disabled = !file || state.busy || singleFrame;
+      const applyRangeBtn = document.getElementById('applyRangeBtn');
+      [
+        rangeStartHandle,
+        rangeEndHandle,
+        document.getElementById('setRangeSourceBtn'),
+        document.getElementById('setRangeStartBtn'),
+        document.getElementById('setRangeEndBtn'),
+        document.getElementById('setWholeRangeBtn'),
+        applyRangeBtn
+      ].forEach(element => {
+        element.disabled = disabled;
+      });
+
+      if (!file) {
+        rangeSelection.style.left = '0%';
+        rangeSelection.style.width = '0%';
+        rangeSource.style.left = '0%';
+        rangeCurrent.style.left = '0%';
+        rangeStartHandle.style.left = '0%';
+        rangeEndHandle.style.left = '0%';
+        rangeSourceText.textContent = '无';
+        rangeSpanText.textContent = '-';
+        rangeCountText.textContent = '0 帧';
+        rangeHint.textContent = '没有文件';
+        renderRangeFrameStrip();
+        return;
+      }
+
+      state.rangeSource = clampFrameIndex(state.rangeSource);
+      state.rangeStart = clampFrameIndex(state.rangeStart);
+      state.rangeEnd = clampFrameIndex(state.rangeEnd);
+      const [start, end] = normalizedRange();
+      const startPct = percentForFrame(start);
+      const endPct = percentForFrame(end);
+      rangeSelection.style.left = `${startPct}%`;
+      rangeSelection.style.width = `${Math.max(0, endPct - startPct)}%`;
+      rangeSource.style.left = `${percentForFrame(state.rangeSource)}%`;
+      rangeCurrent.style.left = `${percentForFrame(state.frame)}%`;
+      rangeStartHandle.style.left = `${percentForFrame(state.rangeStart)}%`;
+      rangeEndHandle.style.left = `${percentForFrame(state.rangeEnd)}%`;
+      const sourceCount = rangeSourceShapes().length;
+      rangeSourceText.textContent = `第 ${state.rangeSource + 1} 帧 · ${sourceCount} 矩形`;
+      rangeSpanText.textContent = `${start + 1}-${end + 1}`;
+      rangeCountText.textContent = `${end - start + 1} 帧`;
+      applyRangeBtn.disabled = disabled || !sourceCount;
+      if (!sourceCount && countFileShapes(file.id)) {
+        rangeHint.textContent = '点选一个矩形';
+      } else if (!sourceCount) {
+        rangeHint.textContent = '画一个矩形';
+      } else if (rangePreviewShapes().length) {
+        rangeHint.textContent = '蓝色虚线是预览';
+      } else if (state.frame !== state.rangeSource) {
+        rangeHint.textContent = `已锁定第 ${state.rangeSource + 1} 帧矩形`;
+      } else {
+        rangeHint.textContent = '调整起止后应用';
+      }
+      if (singleFrame) {
+        rangeSourceText.textContent = '静态图 · 1 帧';
+        rangeSpanText.textContent = '无需范围';
+        rangeCountText.textContent = '-';
+        rangeHint.textContent = '静态图不用设范围';
+      }
+      renderRangeFrameStrip();
+    }
+
+    function applyRangeToFrames() {
+      const file = currentFile();
+      if (!file) return;
+      const sourceFrame = clampFrameIndex(state.rangeSource);
+      const source = rangeSourceShapes();
+      if (!source.length) {
+        statusEl.textContent = '源帧没有可应用的矩形';
+        return;
+      }
+
+      const [start, end] = normalizedRange();
+      pushHistory('应用矩形范围');
+      markCurrentFileEdited();
+      const store = fileStore(file.id);
+      const sourceTracks = source.map(ensureShapeTrack);
+      const sourceTrackSet = new Set(sourceTracks);
+      for (const frameKey of Object.keys(store.frames || {})) {
+        const shapes = Array.isArray(store.frames[frameKey]) ? store.frames[frameKey] : [];
+        store.frames[frameKey] = shapes.filter(shape => !sourceTrackSet.has(shapeTrackId(shape)));
+      }
+      for (let frame = start; frame <= end; frame++) {
+        const key = String(frame);
+        const shapes = Array.isArray(store.frames[key]) ? store.frames[key] : [];
+        store.frames[key] = [...shapes, ...source.map(cloneShapeForRange)];
+      }
+      state.rangeShapeIds = sourceTracks;
+      const currentShapes = readFrameShapes(file.id, state.frame)
+        .filter(shape => sourceTrackSet.has(shapeTrackId(shape)));
+      state.selectedIds = currentShapes.map(shape => shape.id);
+      syncPrimarySelection();
+      setDirty(true);
+      renderShapeList();
+      renderRangeControls();
+      draw();
+      statusEl.textContent = `已把第 ${sourceFrame + 1} 帧的 ${source.length} 个矩形应用到 ${start + 1}-${end + 1}`;
+    }
+
+    function setFrame(frame) {
+      const file = currentFile();
+      if (!file) return;
+      state.frame = Math.max(0, Math.min(file.frameCount - 1, frame));
+      resetCanvasInteraction();
+      frameSlider.value = state.frame;
+      if (!state.rangeSourceLocked) {
+        state.rangeSource = state.frame;
+      }
+      const selectedTracks = new Set(state.rangeShapeIds);
+      const matchingShapes = selectedTracks.size
+        ? readFrameShapes(file.id, state.frame).filter(shape => shapeMatchesRangeSelection(shape, selectedTracks))
+        : [];
+      state.selectedIds = matchingShapes.map(shape => shape.id);
+      syncPrimarySelection();
+      renderRangeControls();
+      loadFrameImage();
+    }
+
+    function selectFile(index, options = {}) {
+      if (!state.files.length) {
+        clearCanvas('没有帧');
+        return;
+      }
+      state.activeFile = Math.max(0, Math.min(state.files.length - 1, index));
+      state.scrollSourceIntoView = Boolean(options.scrollSource);
+      state.frame = 0;
+      state.selectedId = null;
+      state.selectedIds = [];
+      resetCanvasInteraction();
+      const file = currentFile();
+      const singleFrame = isSingleFrame(file);
+      frameSlider.disabled = singleFrame;
+      frameSlider.max = file.frameCount - 1;
+      frameSlider.value = 0;
+      prevBtn.disabled = singleFrame;
+      nextBtn.disabled = singleFrame;
+      topbar.classList.toggle('static', singleFrame);
+      frameKindText.textContent = fileKindText(file);
+      state.rangeSource = 0;
+      state.rangeSourceLocked = false;
+      state.rangeShapeIds = [];
+      state.rangeStart = 0;
+      state.rangeEnd = 0;
+      renderFileList();
+      renderRangeControls();
+      renderActionControls();
+      loadFrameImage();
+    }
+
+    function selectRelativeFile(delta) {
+      if (!state.files.length) return;
+      selectFile(state.activeFile + delta, { scrollSource: true });
+    }
+
+    function clearCanvas(message) {
+      canvas.width = 1;
+      canvas.height = 1;
+      ctx.clearRect(0, 0, 1, 1);
+      resetCanvasInteraction();
+      clearSelection();
+      frameSlider.disabled = true;
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      topbar.classList.add('static');
+      frameText.textContent = '0 / 0';
+      frameKindText.textContent = '图片';
+      shapeList.innerHTML = '<div class="muted">没有可编辑帧</div>';
+      statusEl.textContent = message;
+      renderRangeControls();
+      renderActionControls();
+    }
+
+    function loadFrameImage() {
+      const file = currentFile();
+      if (!file) {
+        clearCanvas('没有帧');
+        return;
+      }
+      statusEl.textContent = `${file.name}`;
+      frameText.textContent = `${state.frame + 1} / ${file.frameCount}`;
+      frameKindText.textContent = fileKindText(file);
+      topbar.classList.toggle('static', isSingleFrame(file));
+      state.image = new Image();
+      state.image.onload = () => {
+        canvas.width = state.image.naturalWidth;
+        canvas.height = state.image.naturalHeight;
+        renderShapeList();
+        renderRangeControls();
+        renderActionControls();
+        draw();
+      };
+      state.image.src = `${file.frames[state.frame]}?v=${Date.now()}`;
+    }
+
+    function activeIdsFromWorkspace() {
+      const ids = new Set();
+      if (!state.workspace) return ids;
+      for (const source of state.workspace.sourceFiles) {
+        if (source.active) ids.add(source.id);
+      }
+      for (const file of state.workspace.frames) {
+        if (file.active) ids.add(file.id);
+      }
+      return ids;
+    }
+
+    async function updateActiveFiles(nextIds) {
+      setBusy(true, '更新处理列表...');
+      try {
+        const data = await apiJson('/api/config', {
+          method: 'POST',
+          body: JSON.stringify({ activeFiles: [...nextIds].sort() })
+        });
+        applyWorkspaceAndManifest(data.workspace, data.manifest);
+        statusEl.textContent = '处理列表已更新';
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function saveAnnotations(options = {}) {
+      clearPendingAutoSave();
+      state.savePromise = state.savePromise.catch(() => {}).then(async () => {
+        const snapshot = annotationsSnapshot();
+        if (snapshot === state.savedSnapshot) {
+          setDirty(false, { autoSave: false });
+          return { skipped: true, path: state.lastSavePath };
+        }
+
+        state.saving = true;
+        state.saveError = false;
+        updateSaveIndicator();
+        try {
+          const data = await apiJson('/api/annotations', {
+            method: 'POST',
+            body: snapshot
+          });
+          state.lastSavePath = data.path || '';
+          state.savedSnapshot = snapshot;
+          state.dirty = annotationsSnapshot() !== state.savedSnapshot;
+          state.saveError = false;
+          if (!options.quiet) {
+            statusEl.textContent = state.lastSavePath ? `保存到 ${state.lastSavePath}` : '已保存';
+          }
+          return data;
+        } catch (error) {
+          state.saveError = true;
+          state.dirty = true;
+          throw error;
+        } finally {
+          state.saving = false;
+          updateSaveIndicator();
+          renderActionControls();
+          if (state.dirty && !state.saveError) scheduleAutoSave(250);
+        }
+      });
+      return state.savePromise;
+    }
+
+    function flushAutoSaveOnExit() {
+      if (!state.dirty) return;
+      clearPendingAutoSave();
+      const snapshot = annotationsSnapshot();
+      if (snapshot === state.savedSnapshot) return;
+      const blob = new Blob([snapshot], { type: 'application/json' });
+      if (navigator.sendBeacon && navigator.sendBeacon('/api/annotations', blob)) return;
+      fetch('/api/annotations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: snapshot,
+        keepalive: true
+      }).catch(() => {});
+    }
+
+    async function saveDirectories() {
+      const sourceDir = sourceDirInput.value.trim();
+      const outputDir = outputDirInput.value.trim();
+      if (!sourceDir) return;
+      if (!outputDir) return;
+      const previousDir = state.workspace?.sourceDir || '';
+      setBusy(true, '保存目录...');
+      try {
+        const data = await apiJson('/api/config', {
+          method: 'POST',
+          body: JSON.stringify({ sourceDir, outputDir })
+        });
+        applyWorkspaceAndManifest(data.workspace, data.manifest);
+        const nextDir = data.workspace?.sourceDir || '';
+        if (nextDir && nextDir !== previousDir) {
+          await updateActiveFiles(new Set((data.workspace.sourceFiles || []).map(source => source.id)));
+          statusEl.textContent = '目录已保存，已全选当前目录图片';
+        } else {
+          statusEl.textContent = '目录已保存';
+        }
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function extractAssets(assetIds, overwrite = false) {
+      const ids = assetIds.filter(Boolean);
+      if (!ids.length) {
+        statusEl.textContent = '没有选中文件';
+        return;
+      }
+      setBusy(true, overwrite ? '重新加载...' : '加载中...');
+      try {
+        const data = await apiJson('/api/extract', {
+          method: 'POST',
+          body: JSON.stringify({ assetIds: ids, overwrite })
+        });
+        applyWorkspaceAndManifest(data.workspace, data.manifest);
+        const summary = data.results.map(item => `${item.id}:${item.status}`).join(' ');
+        statusEl.textContent = summary || '加载完成';
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function basenamePath(path) {
+      const parts = String(path || '').split(/[\\/]/).filter(Boolean);
+      return parts[parts.length - 1] || path || '';
+    }
+
+    function renderExportResults(results, outputDir = '') {
+      exportStatus.innerHTML = '';
+      if (outputDir) {
+        const outputLine = document.createElement('div');
+        outputLine.className = 'export-line export-path';
+        outputLine.title = outputDir;
+        const label = document.createElement('strong');
+        label.textContent = '输出';
+        const path = document.createElement('span');
+        path.textContent = outputDir;
+        outputLine.append(label, path);
+        exportStatus.appendChild(outputLine);
+      }
+      if (!results?.length) return;
+
+      for (const result of results) {
+        const line = document.createElement('div');
+        line.className = 'export-line';
+        if (result.status === 'rendered') {
+          const kind = sourceKindLabel(result.kind);
+          const scale = Number(result.scale || 1);
+          const meta = [
+            kind,
+            formatBytes(result.size),
+            result.quality ? `q${result.quality}` : '',
+            scale < 0.999 ? `${Math.round(scale * 100)}%` : ''
+          ].filter(Boolean).join(' · ');
+          const name = result.outputName || result.id;
+          line.title = result.output || '';
+          line.innerHTML = `<strong>${name}</strong><span>${meta}</span>`;
+        } else {
+          line.innerHTML = `<strong>${result.id}</strong><span>失败 · ${result.error || result.status}</span>`;
+        }
+        exportStatus.appendChild(line);
+      }
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function renderExportProgress(job, startedAt = Date.now()) {
+      const total = Number(job?.total || 0);
+      const done = Number(job?.done || 0);
+      const current = job?.current || '';
+      const percent = total ? Math.min(100, Math.round(done / total * 100)) : 0;
+      const elapsed = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+      exportStatus.innerHTML = `
+        <div class="export-progress">
+          <div class="export-progress-head">
+            <strong>${job?.status === 'queued' ? '等待导出' : '正在导出'}</strong>
+            <span>${done}/${total || '-'}</span>
+          </div>
+          <div class="export-progress-bar"><div class="export-progress-fill" style="width:${percent}%"></div></div>
+          <div class="muted">${current ? `当前：${current}` : '准备压缩'} · ${elapsed}s</div>
+        </div>
+      `;
+    }
+
+    async function waitForExportJob(jobId, startedAt) {
+      while (true) {
+        const data = await apiJson(`/api/render/status?jobId=${encodeURIComponent(jobId)}`);
+        const job = data.job;
+        renderExportProgress(job, startedAt);
+        if (job.status === 'done') return job;
+        if (job.status === 'error') throw new Error(job.error || '导出失败');
+        await sleep(1000);
+      }
+    }
+
+    async function startExportRender(ids, startedAt) {
+      const request = {
+        method: 'POST',
+        body: JSON.stringify({ assetIds: ids, maxBytes: 1024 * 1024 })
+      };
+      try {
+        const data = await apiJson('/api/render/start', request);
+        return { mode: 'job', data };
+      } catch (error) {
+        if (error.status !== 404) throw error;
+        renderExportProgress({ status: 'running', total: ids.length, done: 0, current: '旧服务同步压缩中' }, startedAt);
+        const timer = setInterval(() => {
+          renderExportProgress({ status: 'running', total: ids.length, done: 0, current: '旧服务同步压缩中' }, startedAt);
+        }, 1000);
+        try {
+          const data = await apiJson('/api/render', request);
+          return { mode: 'sync', data };
+        } finally {
+          clearInterval(timer);
+        }
+      }
+    }
+
+    async function exportSelectedAssets() {
+      const ids = [...activeIdsFromWorkspace()].filter(id => {
+        const source = state.workspace?.sourceFiles.find(item => item.id === id);
+        return source && source.imported;
+      });
+      if (!ids.length) {
+        statusEl.textContent = '没有可导出文件';
+        return;
+      }
+
+      setBusy(true, `准备导出 ${ids.length} 个文件...`);
+      const startedAt = Date.now();
+      renderExportProgress({ status: 'queued', total: ids.length, done: 0 }, startedAt);
+      try {
+        await saveAnnotations({ quiet: true });
+        const started = await startExportRender(ids, startedAt);
+        const job = started.mode === 'job' ? await waitForExportJob(started.data.jobId, startedAt) : null;
+        const results = job ? (job.results || []) : (started.data.results || []);
+        const outputDir = job?.outputDir || started.data?.job?.outputDir || started.data?.outputDir || '';
+        renderExportResults(results, outputDir);
+        const okCount = results.filter(item => item.status === 'rendered').length;
+        const failedCount = results.length - okCount;
+        statusEl.textContent = failedCount
+          ? `导出完成 ${okCount} 个，失败 ${failedCount} 个`
+          : `已导出 ${okCount} 个压缩 WebP${outputDir ? ` · ${basenamePath(outputDir)}` : ''}`;
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function renderDirectoryMeta() {
+      if (!state.workspace) return;
+      const sourceCount = state.workspace.sourceFiles.length;
+      const importedCount = state.workspace.sourceFiles.filter(source => source.imported).length;
+      const completedCount = state.workspace.sourceFiles.filter(source => isFileComplete(source.id)).length;
+      const activeCount = activeIdsFromWorkspace().size;
+      directoryMeta.textContent = `图 ${sourceCount} · 已载 ${importedCount} · 完成 ${completedCount} · 选中 ${activeCount}`;
+    }
+
+    function renderSourceFileList() {
+      sourceFileList.innerHTML = '';
+      if (!state.workspace?.sourceFiles.length) {
+        const empty = document.createElement('div');
+        empty.className = 'muted';
+        empty.textContent = '源目录下没有支持的图片文件';
+        sourceFileList.appendChild(empty);
+        return;
+      }
+
+      for (const source of state.workspace.sourceFiles) {
+        const item = document.createElement('div');
+        const fileIndex = fileIndexForSource(source.id);
+        const isCurrent = fileIndex >= 0 && fileIndex === state.activeFile;
+        item.className = `source-item${fileIndex >= 0 ? ' selectable' : ''}${isCurrent ? ' current' : ''}`;
+        item.dataset.sourceId = source.id;
+        if (fileIndex >= 0) {
+          item.addEventListener('click', evt => {
+            if (evt.target.closest('button, input')) return;
+            selectFile(fileIndex);
+          });
+        }
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = source.active;
+        checkbox.title = '加入/移出处理列表';
+        checkbox.addEventListener('click', evt => evt.stopPropagation());
+        checkbox.addEventListener('change', () => {
+          const next = activeIdsFromWorkspace();
+          if (checkbox.checked) next.add(source.id);
+          else next.delete(source.id);
+          updateActiveFiles(next).catch(showError);
+        });
+
+        const info = document.createElement('div');
+        const kind = sourceKindLabel(source.kind);
+        const annotated = countAnnotatedFrames(source.id);
+        const completion = fileCompletionLabel(source.id);
+        let progress = '<span class="source-pill warn">未加载</span>';
+        if (source.imported && completion) {
+          progress = `<span class="source-pill done">${completion}</span>`;
+        } else if (source.imported && annotated) {
+          progress = `<span class="source-pill strong">已标 ${annotated}/${source.frameCount}</span>`;
+        } else if (source.imported) {
+          progress = '<span class="source-pill pending">未处理</span>';
+        }
+        const active = source.active
+          ? '<span class="source-pill strong">选中</span>'
+          : '<span class="source-pill">未选</span>';
+        info.innerHTML = `
+          <div class="source-name">${source.name}</div>
+          <div class="source-meta">
+            <span class="source-pill">${kind}</span>
+            <span class="source-pill">${formatBytes(source.size)}</span>
+            ${progress}
+            ${active}
+          </div>
+        `;
+
+        const button = document.createElement('button');
+        button.className = 'small-btn source-command';
+        button.textContent = source.imported ? '重新加载' : '加载';
+        button.title = source.imported ? '重新读取源文件' : '加载到工作台';
+        button.addEventListener('click', evt => {
+          evt.stopPropagation();
+          extractAssets([source.id], source.imported).catch(showError);
+        });
+
+        item.appendChild(checkbox);
+        item.appendChild(info);
+        item.appendChild(button);
+        sourceFileList.appendChild(item);
+      }
+
+      if (state.scrollSourceIntoView) {
+        state.scrollSourceIntoView = false;
+        requestAnimationFrame(() => {
+          sourceFileList.querySelector('.source-item.current')?.scrollIntoView({
+            block: 'nearest',
+            inline: 'nearest'
+          });
+        });
+      }
+    }
+
+    function renderFileList() {
+      renderSourceFileList();
+    }
+
+    function renderShapeList() {
+      const shapes = readFrameShapes();
+      shapeList.innerHTML = '';
+      if (!shapes.length) {
+        const empty = document.createElement('div');
+        empty.className = 'muted';
+        empty.textContent = '本帧还没有区域';
+        shapeList.appendChild(empty);
+        renderRangeControls();
+        return;
+      }
+      shapes.forEach((shape, index) => {
+        const item = document.createElement('div');
+        const active = isShapeSelected(shape);
+        item.className = `shape-item${active ? ' active' : ''}`;
+        item.textContent = `${index + 1}. ${shape.type === 'rect' ? '矩形' : '旧区域'} ${shape.points.length} 点`;
+        if (active && isRangeShape(shape)) {
+          const role = document.createElement('span');
+          role.className = 'shape-role';
+          role.textContent = '范围对象';
+          item.appendChild(role);
+        }
+        item.addEventListener('click', evt => {
+          selectRangeShape(shape, { additive: evt.shiftKey });
+          renderShapeList();
+          renderRangeControls();
+          draw();
+        });
+        shapeList.appendChild(item);
+      });
+      renderRangeControls();
+    }
+
+    function drawShape(shape, opts = {}) {
+      const isPreview = opts.preview || opts.rangePreview;
+      const selected = isShapeSelected(shape) || opts.preview;
+      ctx.save();
+      ctx.lineWidth = selected ? 3 : 2;
+      ctx.strokeStyle = isPreview ? getComputedStyle(document.documentElement).getPropertyValue('--preview') : getComputedStyle(document.documentElement).getPropertyValue('--shape');
+      ctx.fillStyle = isPreview ? 'rgba(37, 99, 235, 0.18)' : 'rgba(225, 29, 72, 0.22)';
+      if (opts.rangePreview) ctx.setLineDash([8, 5]);
+      ctx.beginPath();
+      if (shape.type === 'rect') {
+        const [a, b] = shape.points;
+        const x = Math.min(a.x, b.x);
+        const y = Math.min(a.y, b.y);
+        const w = Math.abs(b.x - a.x);
+        const h = Math.abs(b.y - a.y);
+        ctx.rect(x, y, w, h);
+      } else {
+        shape.points.forEach((point, index) => {
+          if (index === 0) ctx.moveTo(point.x, point.y);
+          else ctx.lineTo(point.x, point.y);
+        });
+        if (!opts.open) ctx.closePath();
+      }
+      ctx.fill();
+      ctx.stroke();
+      if (selected && !opts.rangePreview) {
+        const handles = shape.type === 'rect' ? rectCorners(shape) : shape.points;
+        const radius = shape.type === 'rect' ? handleRadius() : 4;
+        for (const point of handles) {
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+          ctx.strokeStyle = '#111827';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+
+    function draw() {
+      if (!currentFile() || !state.image.complete || !canvas.width) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(state.image, 0, 0);
+      for (const shape of readFrameShapes()) drawShape(shape);
+      for (const shape of rangePreviewShapes()) drawShape(shape, { rangePreview: true });
+      if (state.drawing) drawShape(state.drawing, { preview: true });
+    }
+
+    function deleteSelected() {
+      const selected = new Set(selectedIds());
+      if (!selected.size) return;
+      const shapes = frameShapes();
+      const deleted = shapes.filter(shape => selected.has(shape.id));
+      if (!deleted.length) return;
+      pushHistory(deleted.length > 1 ? '删除多个矩形' : '删除矩形');
+      markCurrentFileEdited();
+      const next = shapes.filter(shape => !selected.has(shape.id));
+      const store = fileStore();
+      store.frames[String(state.frame)] = next;
+      const deletedKeys = new Set();
+      deleted.forEach(shape => {
+        deletedKeys.add(shape.id);
+        deletedKeys.add(shapeTrackId(shape));
+      });
+      state.rangeShapeIds = state.rangeShapeIds.filter(id => !deletedKeys.has(id));
+      state.selectedId = null;
+      state.selectedIds = [];
+      setDirty(true);
+      renderShapeList();
+      draw();
+    }
+
+    function applyWorkspaceAndManifest(workspace, manifest) {
+      const currentId = currentFile()?.id;
+      state.workspace = workspace;
+      state.files = manifest.files || [];
+      sourceDirInput.value = workspace.sourceDir || '';
+      outputDirInput.value = workspace.outputDir || '';
+      renderDirectoryMeta();
+      renderSourceFileList();
+
+      if (!state.files.length) {
+        state.activeFile = 0;
+        renderFileList();
+        clearCanvas('没有帧');
+        return;
+      }
+
+      const nextIndex = state.files.findIndex(file => file.id === currentId);
+      state.activeFile = nextIndex >= 0 ? nextIndex : Math.min(state.activeFile, state.files.length - 1);
+      renderFileList();
+      selectFile(state.activeFile);
+    }
+
+    function showError(error) {
+      statusEl.textContent = error.message;
+      console.error(error);
+      setBusy(false);
+    }
+
+    function releaseDrawingPointer(evt = null) {
+      const pointerId = evt?.pointerId ?? state.drawingPointerId;
+      if (pointerId !== null && pointerId !== undefined && canvas.hasPointerCapture(pointerId)) {
+        canvas.releasePointerCapture(pointerId);
+      }
+      state.drawingPointerId = null;
+    }
+
+    function startDrawingAt(point, additive, pointerId = null) {
+      state.drawing = { id: 'draft', type: 'rect', points: [point, point], effect: 'pixelate', blockSize: 14 };
+      state.drawingAdditive = additive;
+      state.pendingSelection = null;
+      state.resizing = null;
+      if (pointerId !== null && pointerId !== undefined) {
+        state.drawingPointerId = pointerId;
+        canvas.setPointerCapture(pointerId);
+      }
+    }
+
+    function finishDrawing(evt) {
+      if (!state.drawing) return;
+      const [a, b] = state.drawing.points;
+      if (rectLargeEnough(a, b)) {
+        const id = uid();
+        const shape = {
+          ...state.drawing,
+          id,
+          trackId: id,
+          points: state.drawing.points.map(p => ({ ...p }))
+        };
+        pushHistory('新增矩形');
+        markCurrentFileEdited();
+        frameShapes().push(shape);
+        selectRangeShape(shape, { additive: state.drawingAdditive });
+        setDirty(true);
+      }
+      resetCanvasInteraction();
+      releaseDrawingPointer(evt);
+      renderShapeList();
+      draw();
+    }
+
+    function beginResize(handle, evt) {
+      const { shape, corner } = handle;
+      if (!isShapeSelected(shape)) {
+        selectRangeShape(shape, { additive: evt.shiftKey });
+      }
+      state.resizing = {
+        shapeId: shape.id,
+        fixed: oppositeCorner(corner.key, shape),
+        pointerId: evt.pointerId,
+        changed: false
+      };
+      state.drawing = null;
+      state.drawingAdditive = false;
+      state.pendingSelection = null;
+      state.drawingPointerId = evt.pointerId;
+      canvas.setPointerCapture(evt.pointerId);
+      canvas.style.cursor = corner.cursor;
+      renderShapeList();
+      renderRangeControls();
+      draw();
+    }
+
+    function updateResize(point) {
+      const active = state.resizing;
+      if (!active) return;
+      const shape = readFrameShapes().find(item => item.id === active.shapeId);
+      if (!shape || !isRangeShape(shape)) return;
+      const nextPoint = { x: point.x, y: point.y };
+      const [a, b] = shape.points;
+      if (a.x === active.fixed.x && a.y === active.fixed.y && b.x === nextPoint.x && b.y === nextPoint.y) return;
+      if (!active.changed) {
+        pushHistory('调整矩形');
+        markCurrentFileEdited();
+        active.changed = true;
+      }
+      shape.points = [{ ...active.fixed }, nextPoint];
+      draw();
+    }
+
+    function finishResize(evt) {
+      if (!state.resizing) return;
+      const changed = state.resizing.changed;
+      state.resizing = null;
+      releaseDrawingPointer(evt);
+      canvas.style.cursor = '';
+      if (changed) {
+        setDirty(true);
+        renderShapeList();
+        renderRangeControls();
+      }
+      draw();
+    }
+
+    canvas.addEventListener('pointerdown', evt => {
+      if (!currentFile()) return;
+      if (evt.button !== 0) return;
+      const p = canvasPoint(evt);
+      const handle = pickResizeHandleAt(p);
+      if (handle) {
+        beginResize(handle, evt);
+        evt.preventDefault();
+        return;
+      }
+      const hit = pickShapeAt(p);
+      if (hit) {
+        state.pendingSelection = { start: p, hitId: hit.id, additive: evt.shiftKey };
+        state.drawingPointerId = evt.pointerId;
+        canvas.setPointerCapture(evt.pointerId);
+        evt.preventDefault();
+        return;
+      }
+      startDrawingAt(p, evt.shiftKey, evt.pointerId);
+      evt.preventDefault();
+    });
+
+    canvas.addEventListener('pointermove', evt => {
+      const p = canvasPoint(evt);
+      if (state.resizing) {
+        updateResize(p);
+        return;
+      }
+      if (state.pendingSelection) {
+        if (dragStarted(state.pendingSelection.start, p)) {
+          startDrawingAt(state.pendingSelection.start, state.pendingSelection.additive, evt.pointerId);
+          state.drawing.points[1] = p;
+          draw();
+        }
+        return;
+      }
+      if (!state.drawing) {
+        const handle = pickResizeHandleAt(p);
+        canvas.style.cursor = handle ? handle.corner.cursor : '';
+        return;
+      }
+      state.drawing.points[1] = p;
+      draw();
+    });
+
+    canvas.addEventListener('pointerup', evt => {
+      if (state.resizing) {
+        finishResize(evt);
+        return;
+      }
+      if (state.pendingSelection) {
+        const pending = state.pendingSelection;
+        const hit = readFrameShapes().find(shape => shape.id === pending.hitId);
+        state.pendingSelection = null;
+        releaseDrawingPointer(evt);
+        if (hit) {
+          selectRangeShape(hit, { additive: pending.additive });
+          renderShapeList();
+          renderRangeControls();
+          draw();
+        }
+        return;
+      }
+      finishDrawing(evt);
+    });
+    canvas.addEventListener('pointercancel', evt => {
+      const resizeChanged = state.resizing?.changed;
+      resetCanvasInteraction();
+      releaseDrawingPointer(evt);
+      if (resizeChanged) setDirty(true);
+      draw();
+    });
+
+    document.getElementById('rectTool').addEventListener('click', () => setTool());
+    resetShortcutsBtn.addEventListener('click', () => {
+      state.shortcuts = { ...DEFAULT_SHORTCUTS };
+      state.capturingShortcut = null;
+      saveShortcuts();
+      renderShortcutList();
+      statusEl.textContent = '快捷键已重置';
+    });
+    document.getElementById('prevBtn').addEventListener('click', () => setFrame(state.frame - 1));
+    document.getElementById('nextBtn').addEventListener('click', () => setFrame(state.frame + 1));
+    document.getElementById('cancelBtn').addEventListener('click', () => {
+      resetCanvasInteraction();
+      releaseDrawingPointer();
+      draw();
+    });
+    document.getElementById('undoBtn').addEventListener('click', undoLast);
+    document.getElementById('completeBtn').addEventListener('click', toggleCurrentFileComplete);
+    document.getElementById('deleteBtn').addEventListener('click', deleteSelected);
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      if (!currentFile()) return;
+      pushHistory('清空本帧');
+      markCurrentFileEdited();
+      fileStore().frames[String(state.frame)] = [];
+      state.selectedId = null;
+      state.selectedIds = [];
+      state.rangeShapeIds = [];
+      setDirty(true);
+      renderShapeList();
+      draw();
+    });
+    rangeTimeline.addEventListener('pointerdown', evt => {
+      if (!currentFile() || isSingleFrame() || state.busy) return;
+      if (evt.target === rangeStartHandle) state.activeRangeHandle = 'start';
+      else if (evt.target === rangeEndHandle) state.activeRangeHandle = 'end';
+      else {
+        setNearestRangeHandle(evt);
+        return;
+      }
+      evt.preventDefault();
+      rangeTimeline.setPointerCapture(evt.pointerId);
+      updateRangeHandle(state.activeRangeHandle, evt);
+    });
+    rangeTimeline.addEventListener('pointermove', evt => {
+      if (!state.activeRangeHandle) return;
+      updateRangeHandle(state.activeRangeHandle, evt);
+    });
+    rangeTimeline.addEventListener('pointerup', evt => {
+      state.activeRangeHandle = null;
+      if (rangeTimeline.hasPointerCapture(evt.pointerId)) {
+        rangeTimeline.releasePointerCapture(evt.pointerId);
+      }
+    });
+    rangeTimeline.addEventListener('pointercancel', evt => {
+      state.activeRangeHandle = null;
+      if (rangeTimeline.hasPointerCapture(evt.pointerId)) {
+        rangeTimeline.releasePointerCapture(evt.pointerId);
+      }
+    });
+    document.getElementById('setRangeSourceBtn').addEventListener('click', () => {
+      state.rangeSource = clampFrameIndex(state.frame);
+      state.rangeSourceLocked = true;
+      captureRangeShapes(state.rangeSource);
+      renderRangeControls();
+      draw();
+    });
+    document.getElementById('setRangeStartBtn').addEventListener('click', () => {
+      adoptCurrentFrameShapeIfNeeded();
+      setRange(state.frame, state.rangeEnd);
+    });
+    document.getElementById('setRangeEndBtn').addEventListener('click', () => setRange(state.rangeStart, state.frame));
+    document.getElementById('setWholeRangeBtn').addEventListener('click', () => {
+      const file = currentFile();
+      if (!file) return;
+      setRange(0, file.frameCount - 1);
+    });
+    document.getElementById('applyRangeBtn').addEventListener('click', applyRangeToFrames);
+    document.getElementById('saveBtn').addEventListener('click', async () => {
+      try {
+        await saveAnnotations();
+      } catch (error) {
+        showError(error);
+      }
+    });
+    document.getElementById('saveDirBtn').addEventListener('click', () => saveDirectories().catch(showError));
+    document.getElementById('refreshBtn').addEventListener('click', () => boot().catch(showError));
+    selectAllSourcesBtn.addEventListener('click', () => {
+      if (!state.workspace?.sourceFiles.length) {
+        statusEl.textContent = '没有可选图片';
+        return;
+      }
+      updateActiveFiles(new Set(state.workspace.sourceFiles.map(source => source.id))).catch(showError);
+    });
+    document.getElementById('extractSelectedBtn').addEventListener('click', () => {
+      const ids = [...activeIdsFromWorkspace()].filter(id => {
+        const source = state.workspace?.sourceFiles.find(item => item.id === id);
+        return source && !source.imported;
+      });
+      extractAssets(ids, false).catch(showError);
+    });
+    document.getElementById('exportSelectedBtn').addEventListener('click', () => {
+      exportSelectedAssets().catch(showError);
+    });
+    frameSlider.addEventListener('input', () => setFrame(Number(frameSlider.value)));
+    frameSlider.addEventListener('pointerdown', evt => {
+      if (frameSlider.disabled || isSingleFrame()) return;
+      evt.preventDefault();
+      state.frameSliderDragging = true;
+      frameSlider.setPointerCapture(evt.pointerId);
+      setFrame(frameFromSliderEvent(evt));
+    });
+    frameSlider.addEventListener('pointermove', evt => {
+      if (!state.frameSliderDragging) return;
+      evt.preventDefault();
+      setFrame(frameFromSliderEvent(evt));
+    });
+    frameSlider.addEventListener('pointerup', evt => {
+      state.frameSliderDragging = false;
+      if (frameSlider.hasPointerCapture(evt.pointerId)) {
+        frameSlider.releasePointerCapture(evt.pointerId);
+      }
+    });
+    frameSlider.addEventListener('pointercancel', evt => {
+      state.frameSliderDragging = false;
+      if (frameSlider.hasPointerCapture(evt.pointerId)) {
+        frameSlider.releasePointerCapture(evt.pointerId);
+      }
+    });
+
+    window.addEventListener('keydown', evt => {
+      if (state.capturingShortcut) {
+        const combo = shortcutForEvent(evt);
+        if (!combo) return;
+        evt.preventDefault();
+        setShortcut(state.capturingShortcut, combo);
+        return;
+      }
+      if (evt.target instanceof HTMLInputElement) return;
+      if (shortcutMatches(evt, 'save')) {
+        evt.preventDefault();
+        document.getElementById('saveBtn').click();
+        return;
+      }
+      if (shortcutMatches(evt, 'undo')) {
+        evt.preventDefault();
+        undoLast();
+        return;
+      }
+      if (shortcutMatches(evt, 'prevFile')) {
+        evt.preventDefault();
+        selectRelativeFile(-1);
+        return;
+      }
+      if (shortcutMatches(evt, 'nextFile')) {
+        evt.preventDefault();
+        selectRelativeFile(1);
+        return;
+      }
+      if (shortcutMatches(evt, 'prevFrame')) {
+        evt.preventDefault();
+        setFrame(state.frame - 1);
+        return;
+      }
+      if (shortcutMatches(evt, 'nextFrame')) {
+        evt.preventDefault();
+        setFrame(state.frame + 1);
+        return;
+      }
+      if (shortcutMatches(evt, 'toggleComplete')) {
+        evt.preventDefault();
+        completeCurrentFileAndAdvance();
+        return;
+      }
+      if (shortcutMatches(evt, 'rangeStart')) {
+        evt.preventDefault();
+        adoptCurrentFrameShapeIfNeeded();
+        setRange(state.frame, state.rangeEnd);
+        return;
+      }
+      if (shortcutMatches(evt, 'rangeEnd')) {
+        evt.preventDefault();
+        setRange(state.rangeStart, state.frame);
+        return;
+      }
+      if (shortcutMatches(evt, 'applyRange')) {
+        evt.preventDefault();
+        applyRangeToFrames();
+        return;
+      }
+      if (shortcutMatches(evt, 'cancel')) {
+        evt.preventDefault();
+        resetCanvasInteraction();
+        releaseDrawingPointer();
+        draw();
+        return;
+      }
+      if (shortcutMatches(evt, 'delete')) {
+        evt.preventDefault();
+        deleteSelected();
+      }
+    });
+
+    window.addEventListener('pagehide', flushAutoSaveOnExit);
+    window.addEventListener('beforeunload', flushAutoSaveOnExit);
+
+    async function boot() {
+      const [workspace, manifest, annotations] = await Promise.all([
+        apiJson('/api/workspace'),
+        apiJson('/api/manifest'),
+        apiJson('/api/annotations')
+      ]);
+      state.annotations = annotations;
+      state.savedSnapshot = annotationsSnapshot();
+      state.history = [];
+      state.saveError = false;
+      state.saving = false;
+      clearPendingAutoSave();
+      applyWorkspaceAndManifest(workspace, manifest);
+      setDirty(false);
+    }
+
+    loadShortcuts();
+    renderShortcutList();
+    boot().catch(showError);
+  </script>
+</body>
+</html>

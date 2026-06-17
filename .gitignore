@@ -1,0 +1,6 @@
+data/
+exports/
+inputs/
+legacy/
+__pycache__/
+*.pyc
