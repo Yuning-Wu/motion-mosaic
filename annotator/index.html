@@ -2221,6 +2221,7 @@
       rangeStart: 0,
       rangeEnd: 0,
       rangeSegments: [],
+      rangeFrameStripSignature: '',
       activeRangeHandle: null,
       frameSliderDragging: false,
       drawingPointerId: null,
@@ -3310,8 +3311,11 @@
 
     function renderRangeFrameStrip() {
       const file = currentFile();
-      rangeFrameStrip.innerHTML = '';
+      const signature = rangeFrameStripSignature(file);
+      if (signature === state.rangeFrameStripSignature) return;
+      state.rangeFrameStripSignature = signature;
       if (!file) {
+        rangeFrameStrip.replaceChildren();
         rangeFrameStrip.style.gridTemplateColumns = '';
         return;
       }
@@ -3320,6 +3324,7 @@
       const targets = targetFrameSet();
       const sourceTracks = new Set(rangeSourceShapes().map(shapeTrackId));
       rangeFrameStrip.style.gridTemplateColumns = `repeat(${file.frameCount}, minmax(2px, 1fr))`;
+      const fragment = document.createDocumentFragment();
       for (let frame = 0; frame < file.frameCount; frame++) {
         const button = document.createElement('button');
         const classes = ['range-frame'];
@@ -3345,8 +3350,38 @@
             setFrame(frame);
           }
         });
-        rangeFrameStrip.appendChild(button);
+        fragment.appendChild(button);
       }
+      rangeFrameStrip.replaceChildren(fragment);
+    }
+
+    function rangeFrameStripSignature(file) {
+      if (!file) return 'empty';
+      const frames = state.annotations.files?.[file.id]?.frames || {};
+      const shapeMarks = Object.entries(frames)
+        .filter(([, shapes]) => Array.isArray(shapes) && shapes.length)
+        .map(([frame, shapes]) => {
+          const tracks = shapes
+            .filter(isRangeShape)
+            .map(shapeTrackId)
+            .sort()
+            .join(',');
+          return `${frame}:${shapes.length}:${tracks}`;
+        })
+        .sort()
+        .join('|');
+      return JSON.stringify([
+        file.id,
+        file.frameCount,
+        Boolean(state.busy),
+        state.frame,
+        state.rangeSource,
+        state.rangeStart,
+        state.rangeEnd,
+        state.rangeSegments,
+        state.rangeShapeIds,
+        shapeMarks
+      ]);
     }
 
     function renderRangeControls() {
@@ -3630,13 +3665,13 @@
       frameKindText.textContent = fileKindText(file);
       topbar.classList.toggle('static', isSingleFrame(file));
       const image = new Image();
+      image.decoding = 'async';
       state.image = image;
       image.onload = () => {
         if (loadSeq !== state.imageLoadSeq) return;
         canvas.width = image.naturalWidth;
         canvas.height = image.naturalHeight;
         renderShapeList();
-        renderRangeControls();
         renderActionControls();
         draw();
       };
@@ -3644,7 +3679,7 @@
         if (loadSeq !== state.imageLoadSeq) return;
         clearCanvas('帧加载失败，请刷新列表后重试');
       };
-      image.src = `${frameUrl}?v=${Date.now()}`;
+      image.src = frameUrl;
     }
 
     function activeIdsFromWorkspace() {
@@ -5303,19 +5338,15 @@
     window.addEventListener('beforeunload', flushAutoSaveOnExit);
 
     async function boot() {
-      const [workspace, manifest, annotations] = await Promise.all([
-        apiJson('/api/workspace'),
-        apiJson('/api/manifest'),
-        apiJson('/api/annotations')
-      ]);
-      state.annotations = annotations;
+      const data = await apiJson('/api/bootstrap');
+      state.annotations = data.annotations || { version: 1, files: {} };
       state.savedSnapshot = annotationsSnapshot();
       state.history = [];
       state.saveError = false;
       state.saving = false;
       state.autoImportFailures.clear();
       clearPendingAutoSave();
-      applyWorkspaceAndManifest(workspace, manifest);
+      applyWorkspaceAndManifest(data.workspace, data.manifest);
       setDirty(false);
       scheduleAutoImport(200);
     }

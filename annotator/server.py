@@ -355,6 +355,17 @@ def source_record(
     }
 
 
+def frame_asset_version(asset_id: str, asset_dir: Path) -> str:
+    candidates = [source_meta_path(asset_id), asset_dir]
+    version = 0
+    for path in candidates:
+        try:
+            version = max(version, int(path.stat().st_mtime_ns))
+        except OSError:
+            continue
+    return str(version or time.time_ns())
+
+
 def frame_record(
     asset_dir: Path,
     annotations: dict,
@@ -369,6 +380,7 @@ def frame_record(
     asset_id = asset_id_for_frame_dir(asset_dir)
     source = source_map.get(asset_id)
     source_name = relative_source_name(source, source_dir) if source else ""
+    version = frame_asset_version(asset_id, asset_dir)
     return {
         "id": asset_id,
         "name": asset_id,
@@ -380,13 +392,13 @@ def frame_record(
         "frameCount": len(frame_files),
         "annotatedFrameCount": annotated_frame_count(asset_id, annotations),
         "active": asset_id in active_files if active_files_configured else True,
-        "frames": [f"/frame/{quote(asset_id, safe='/')}/{quote(frame.name)}" for frame in frame_files],
+        "frames": [f"/frame/{quote(asset_id, safe='/')}/{quote(frame.name)}?v={version}" for frame in frame_files],
     }
 
 
-def build_workspace() -> dict:
-    config = load_config()
-    annotations = load_annotations()
+def build_workspace(config: dict | None = None, annotations: dict | None = None) -> dict:
+    config = config if config is not None else load_config()
+    annotations = annotations if annotations is not None else load_annotations()
     source_dir = resolve_dir(config["sourceDir"])
     sources = source_files(source_dir)
     source_map = {asset_id_for_source(path, source_dir): path for path in sources}
@@ -438,6 +450,16 @@ def manifest_from_workspace(workspace: dict) -> dict:
 
 def build_manifest() -> dict:
     return manifest_from_workspace(build_workspace())
+
+
+def build_bootstrap() -> dict:
+    annotations = load_annotations()
+    workspace = build_workspace(annotations=annotations)
+    return {
+        "workspace": workspace,
+        "manifest": manifest_from_workspace(workspace),
+        "annotations": annotations,
+    }
 
 
 def safe_frame_path(asset: str, filename: str) -> Path | None:
@@ -701,9 +723,9 @@ def json_response(data: dict, status: int = 200) -> HTTPResponse:
     )
 
 
-def file_response(path: Path):
+def file_response(path: Path, cache_control: str = "no-store"):
     result = static_file(path.name, root=str(path.parent))
-    result.set_header("Cache-Control", "no-store")
+    result.set_header("Cache-Control", cache_control)
     return result
 
 
@@ -722,6 +744,10 @@ def create_app() -> Bottle:
     @app.get("/api/workspace")
     def api_workspace():
         return json_response(build_workspace())
+
+    @app.get("/api/bootstrap")
+    def api_bootstrap():
+        return json_response(build_bootstrap())
 
     @app.get("/api/annotations")
     def api_annotations():
@@ -745,7 +771,7 @@ def create_app() -> Bottle:
         frame_path = safe_frame_path(asset, filename)
         if not frame_path:
             return json_response({"ok": False, "error": "frame not found"}, 404)
-        return file_response(frame_path)
+        return file_response(frame_path, "private, max-age=31536000, immutable")
 
     @app.get("/assets/<rel:path>")
     def asset(rel: str):
