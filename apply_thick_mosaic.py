@@ -9,7 +9,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter, ImageSequence
 
-from app_paths import project_dir
+from app_paths import project_dir, project_exports_dir, resolve_project_output_dir, resolve_project_path
 
 WORK_DIR = project_dir()
 PROJECT_DIR = WORK_DIR
@@ -17,7 +17,7 @@ DEFAULT_SOURCE_DIR = PROJECT_DIR / "inputs"
 DATA_DIR = WORK_DIR / "data"
 CONFIG_PATH = DATA_DIR / "config.json"
 FRAMES_DIR = DATA_DIR / "frames"
-DEFAULT_OUTPUT_DIR = PROJECT_DIR / "exports"
+DEFAULT_OUTPUT_DIR = project_exports_dir()
 OUTPUT_DIR = DEFAULT_OUTPUT_DIR
 ANNOTATIONS_PATH = DATA_DIR / "annotations.json"
 WEBPMUX = Path(r"D:\Software\DevTool\Scoop\shims\webpmux.exe")
@@ -91,7 +91,7 @@ def source_dir() -> Path:
             data = {}
         configured = data.get("sourceDir")
         if configured:
-            return Path(configured).expanduser().resolve()
+            return resolve_project_path(configured)
     return DEFAULT_SOURCE_DIR
 
 
@@ -103,7 +103,7 @@ def output_dir() -> Path:
             data = {}
         configured = data.get("outputDir")
         if configured:
-            return Path(configured).expanduser().resolve()
+            return resolve_project_output_dir(configured)
     return DEFAULT_OUTPUT_DIR
 
 

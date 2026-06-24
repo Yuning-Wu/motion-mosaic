@@ -19,7 +19,15 @@ SOURCE_ROOT = Path(__file__).resolve().parent.parent
 if str(SOURCE_ROOT) not in sys.path:
     sys.path.insert(0, str(SOURCE_ROOT))
 
-from app_paths import is_frozen, project_dir, resource_path
+from app_paths import (
+    is_frozen,
+    project_dir,
+    project_exports_dir,
+    resolve_project_output_dir,
+    resolve_project_path,
+    resource_path,
+    stored_project_output_dir,
+)
 
 ROOT = Path(__file__).resolve().parent
 WORK_DIR = project_dir()
@@ -27,7 +35,7 @@ PROJECT_DIR = WORK_DIR
 DATA_DIR = WORK_DIR / "data"
 FRAMES_DIR = DATA_DIR / "frames"
 DEFAULT_SOURCE_DIR = PROJECT_DIR / "inputs"
-DEFAULT_OUTPUT_DIR = PROJECT_DIR / "exports"
+DEFAULT_OUTPUT_DIR = project_exports_dir()
 ANNOTATIONS_PATH = DATA_DIR / "annotations.json"
 CONFIG_PATH = DATA_DIR / "config.json"
 INDEX_PATH = resource_path("annotator", "index.html")
@@ -57,7 +65,7 @@ def write_json_atomic(path: Path, data: dict) -> None:
 def default_config() -> dict:
     return {
         "sourceDir": str(DEFAULT_SOURCE_DIR),
-        "outputDir": str(DEFAULT_OUTPUT_DIR),
+        "outputDir": "exports",
         "activeFiles": None,
     }
 
@@ -81,20 +89,27 @@ def load_config() -> dict:
     else:
         config["activeFiles"] = [str(item) for item in active_files if str(item).strip()]
     config["sourceDir"] = str(resolve_dir(config.get("sourceDir") or DEFAULT_SOURCE_DIR))
-    config["outputDir"] = str(resolve_dir(config.get("outputDir") or DEFAULT_OUTPUT_DIR))
+    config["outputDir"] = str(resolve_project_output_dir(config.get("outputDir")))
     return config
+
+
+def stored_output_dir(value: str | Path | None) -> str:
+    return stored_project_output_dir(value)
+
+
+def persisted_config(config: dict) -> dict:
+    saved = dict(config)
+    saved["outputDir"] = stored_output_dir(saved.get("outputDir"))
+    return saved
 
 
 def save_config(config: dict) -> None:
     with STORAGE_LOCK:
-        write_json_atomic(CONFIG_PATH, config)
+        write_json_atomic(CONFIG_PATH, persisted_config(config))
 
 
 def resolve_dir(value: str | Path) -> Path:
-    path = Path(value).expanduser()
-    if not path.is_absolute():
-        path = PROJECT_DIR / path
-    return path.resolve()
+    return resolve_project_path(value)
 
 
 def normalize_animated_format(value: str | None) -> str:
