@@ -281,6 +281,22 @@
       min-width: 8px;
       border-radius: 999px;
       background: var(--accent);
+      z-index: 2;
+    }
+
+    .range-selection.draft {
+      background: transparent;
+      box-shadow: inset 0 0 0 2px var(--accent);
+    }
+
+    .range-target-segment {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      min-width: 8px;
+      border-radius: 999px;
+      background: rgba(15, 118, 110, 0.72);
+      z-index: 1;
     }
 
     .range-current {
@@ -353,6 +369,10 @@
       background: #8fd3c9;
     }
 
+    .range-frame.draft-range {
+      box-shadow: inset 0 0 0 2px rgba(15, 118, 110, 0.5);
+    }
+
     .range-frame.will-apply::before {
       content: "";
       position: absolute;
@@ -388,6 +408,12 @@
 
     .range-frame.source {
       box-shadow: inset 0 0 0 2px var(--warn);
+    }
+
+    .range-commit-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
     }
 
     .source-actions {
@@ -604,6 +630,17 @@
       background: #fff;
     }
 
+    .path-control {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 6px;
+    }
+
+    .path-control .small-btn {
+      min-width: 56px;
+      padding: 0 8px;
+    }
+
     .small-btn, .tool-btn, .icon-btn {
       border-color: #dce1dd;
       border-radius: 7px;
@@ -667,13 +704,32 @@
     }
 
     .source-actions {
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 6px;
       margin-top: 8px;
     }
 
     .source-actions .small-btn {
       padding: 0 6px;
+    }
+
+    .source-actions .wide {
+      grid-column: 1 / -1;
+    }
+
+    .source-format-control {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      grid-column: 1 / -1;
+      min-height: 28px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .source-format-control .source-filter {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .export-status {
@@ -741,81 +797,302 @@
       white-space: nowrap;
     }
 
+    .export-summary {
+      display: grid;
+      gap: 3px;
+      border-top: 1px solid #edf0ed;
+      padding-top: 7px;
+    }
+
+    .export-summary strong {
+      color: #20272d;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .export-summary span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .export-failure {
+      color: var(--danger);
+    }
+
     .source-list {
-      gap: 5px;
+      display: block;
       margin-top: 0;
     }
 
-    .source-item {
-      grid-template-columns: 20px minmax(0, 1fr) 72px;
-      gap: 8px;
-      border-color: transparent;
-      border-radius: 8px;
-      background: #fff;
-      padding: 8px;
-      box-shadow: inset 0 0 0 1px #e7ebe7;
+    .source-filter-bar {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+      gap: 6px;
+      margin-bottom: 8px;
     }
 
-    .source-item.selectable {
+    .source-filter {
+      display: inline-grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 2px;
+      border: 1px solid #dfe5e1;
+      border-radius: 999px;
+      background: #eef2ef;
+      padding: 2px;
+    }
+
+    .source-filter button {
+      min-height: 22px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: #65706c;
+      padding: 0 8px;
+      font-size: 11px;
       cursor: pointer;
     }
 
-    .source-item.current {
-      box-shadow: inset 0 0 0 1px #1f5e57, inset 3px 0 0 #1f5e57;
-      background: #f8fbfa;
+    .source-filter button.active {
+      background: #ffffff;
+      color: #1f5e57;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+    }
+
+    .source-tree {
+      display: grid;
+      gap: 1px;
+    }
+
+    .source-tree-row {
+      --tree-indent: 0px;
+      display: grid;
+      align-items: center;
+      gap: 6px;
+      min-height: 30px;
+      border-radius: 6px;
+      padding: 3px 6px 3px calc(6px + var(--tree-indent));
+    }
+
+    .source-tree-row.folder {
+      grid-template-columns: 20px 18px minmax(0, 1fr) auto;
+      border: 1px solid #edf1ee;
+      background: #f6f8f6;
+      color: #20272d;
+      font-size: 12px;
+      margin-top: 5px;
+    }
+
+    .source-tree-row.file {
+      grid-template-columns: 18px minmax(0, 1fr) auto;
+      border-top: 1px solid #f0f3f1;
+      min-height: 34px;
+    }
+
+    .source-tree-row:hover {
+      background: #f6f8f7;
+    }
+
+    .source-tree-row.current {
+      background: #f2fbf8;
+      box-shadow: inset 3px 0 0 #1f5e57;
+    }
+
+    .source-caret {
+      width: 20px;
+      height: 20px;
+      min-height: 20px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: #52615c;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      line-height: 1;
+      transition: background 140ms ease, color 140ms ease;
+    }
+
+    .source-caret::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-right: 1.7px solid currentColor;
+      border-bottom: 1.7px solid currentColor;
+      transform: rotate(-45deg);
+      transition: transform 140ms ease;
+    }
+
+    .source-caret[aria-expanded="true"]::before {
+      transform: rotate(45deg);
+    }
+
+    .source-caret:hover {
+      background: #e7eeeb;
+      color: #1f5e57;
+    }
+
+    .source-tree-check {
+      width: 15px;
+      height: 15px;
+      margin: 0;
+    }
+
+    .source-tree-check {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 120ms ease;
+    }
+
+    .source-tree-row:hover .source-tree-check,
+    .source-tree-row:focus-within .source-tree-check {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .source-folder-main, .source-file-main {
+      min-width: 0;
+    }
+
+    .source-folder-name, .source-name {
+      min-width: 0;
+      overflow: hidden;
+      color: #20272d;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .source-folder-name {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+    }
+
+    .source-folder-name::before {
+      content: "";
+      width: 11px;
+      height: 8px;
+      flex: 0 0 auto;
+      border: 1.5px solid #789088;
+      border-top-width: 4px;
+      border-radius: 2px;
+      opacity: 0.85;
     }
 
     .source-name {
       font-size: 13px;
       font-weight: 650;
-      color: #20272d;
+    }
+
+    .source-file-main {
+      position: relative;
+      padding-left: 10px;
+    }
+
+    .source-file-main::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 4px;
+      width: 4px;
+      height: calc(100% - 8px);
+      border-radius: 999px;
+      background: #cfd8d3;
+    }
+
+    .source-tree-row.kind-animated .source-file-main::before {
+      background: #6c8fd6;
+    }
+
+    .source-tree-row.kind-static .source-file-main::before {
+      background: #9db3aa;
+    }
+
+    .source-folder-meta, .source-meta {
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .source-meta {
       display: flex;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 5px;
-      margin-top: 5px;
-      line-height: 1.2;
+      gap: 6px;
     }
 
-    .source-pill {
-      display: inline-flex;
-      align-items: center;
-      min-height: 20px;
-      border-radius: 999px;
-      background: #f0f3f1;
-      color: #58636c;
-      padding: 0 7px;
-      font-size: 12px;
+    .source-meta-base {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
       white-space: nowrap;
     }
 
-    .source-pill.strong {
-      background: #e2f1ed;
-      color: #15564e;
+    .source-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      padding: 1px 7px;
+      font-size: 11px;
+      line-height: 18px;
+      font-weight: 650;
     }
 
-    .source-pill.warn {
-      background: #fff2cc;
-      color: #765100;
+    .source-status::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: currentColor;
     }
 
-    .source-pill.done {
-      background: #ddece7;
-      color: #164e44;
+    .source-status.complete {
+      background: #e4f6ee;
+      color: #0f7a5a;
     }
 
-    .source-pill.pending {
-      background: #eef0f2;
-      color: #69737c;
+    .source-status.changed {
+      background: #fff4d9;
+      color: #9a6200;
+    }
+
+    .source-status.warn {
+      background: #fff0e8;
+      color: #b94a18;
+    }
+
+    .source-commands {
+      display: flex;
+      justify-content: flex-end;
+      gap: 4px;
+      min-width: 102px;
     }
 
     .source-command {
       min-width: 0;
+      min-height: 26px;
       padding: 0 6px;
       font-size: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 120ms ease;
+    }
+
+    .source-commands .source-command {
+      min-width: 48px;
+    }
+
+    .source-tree-row.file:hover .source-command,
+    .source-tree-row.file:focus-within .source-command,
+    .source-tree-row.current .source-command,
+    .source-command.needed {
+      opacity: 1;
+      pointer-events: auto;
     }
 
     .group {
@@ -876,11 +1153,11 @@
     }
 
     .range-actions {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 6px;
     }
 
-    .range-actions .small-btn {
+    .range-actions .small-btn, .range-commit-actions .small-btn {
       padding: 0 4px;
     }
 
@@ -945,25 +1222,50 @@
         <span id="directoryMeta" class="panel-count"></span>
       </div>
       <div class="source-field">
-        <label for="sourceDirInput">源目录</label>
-        <input id="sourceDirInput" class="input" type="text" spellcheck="false">
+        <label for="sourceDirInput">图片目录</label>
+        <div class="path-control">
+          <input id="sourceDirInput" class="input" type="text" spellcheck="false">
+          <button id="sourceBrowseBtn" class="small-btn" title="在电脑里选择图片目录">选择</button>
+        </div>
       </div>
       <div class="source-field">
-        <label for="outputDirInput">输出目录</label>
-        <input id="outputDirInput" class="input" type="text" spellcheck="false">
+        <label for="outputDirInput">导出目录</label>
+        <div class="path-control">
+          <input id="outputDirInput" class="input" type="text" spellcheck="false">
+          <button id="outputBrowseBtn" class="small-btn" title="在电脑里选择导出目录">选择</button>
+        </div>
       </div>
       <div class="source-actions">
-        <button id="saveDirBtn" class="small-btn primary">保存目录</button>
-        <button id="refreshBtn" class="small-btn">刷新</button>
-        <button id="selectAllSourcesBtn" class="small-btn">全选</button>
-        <button id="extractSelectedBtn" class="small-btn">加载/更新</button>
-        <button id="exportSelectedBtn" class="small-btn primary" title="保存标注并导出压缩 WebP">导出</button>
+        <button id="saveDirBtn" class="small-btn primary">应用目录</button>
+        <button id="refreshBtn" class="small-btn">刷新列表</button>
+        <button id="selectAllSourcesBtn" class="small-btn">勾选全部</button>
+        <button id="extractSelectedBtn" class="small-btn">导入待处理</button>
+        <div class="source-format-control">
+          <span>动图格式</span>
+          <div id="animatedFormatControl" class="source-filter" role="group" aria-label="动图导出格式">
+            <button type="button" class="active" data-format="webp">WebP</button>
+            <button type="button" data-format="webm">WebM</button>
+          </div>
+        </div>
+        <button id="exportSelectedBtn" class="small-btn primary wide" title="保存标注；动图按所选格式导出，静态图导出 WebP">导出已完成</button>
       </div>
       <div id="exportStatus" class="export-status"></div>
 
       <div class="group">
         <div class="section-head">
           <h2>文件</h2>
+        </div>
+        <div class="source-filter-bar">
+          <div id="sourceFilter" class="source-filter" role="group" aria-label="完成筛选">
+            <button type="button" class="active" data-filter="all">全部</button>
+            <button type="button" data-filter="complete">已完成</button>
+            <button type="button" data-filter="incomplete">未完成</button>
+          </div>
+          <div id="sourceKindFilter" class="source-filter" role="group" aria-label="类型筛选">
+            <button type="button" class="active" data-kind="all">全部</button>
+            <button type="button" data-kind="animated">动态图</button>
+            <button type="button" data-kind="static">静态图</button>
+          </div>
         </div>
         <div id="sourceFileList" class="source-list"></div>
       </div>
@@ -1039,11 +1341,18 @@
           <div id="rangeFrameStrip" class="range-frame-strip"></div>
           <div class="range-actions">
             <button id="setRangeSourceBtn" class="small-btn">选本帧矩形</button>
+            <button id="addRangeSegmentBtn" class="small-btn">加入这段</button>
             <button id="setRangeStartBtn" class="small-btn">设为开始</button>
             <button id="setRangeEndBtn" class="small-btn">设为结束</button>
-            <button id="setWholeRangeBtn" class="small-btn">整段覆盖</button>
+            <button id="setWholeRangeBtn" class="small-btn">全片目标</button>
+            <button id="clearRangeSegmentsBtn" class="small-btn">清空目标</button>
           </div>
-          <button id="applyRangeBtn" class="small-btn primary">应用当前矩形到这些帧</button>
+          <div class="range-commit-actions">
+            <button id="applyRangeBtn" class="small-btn primary">应用到目标帧</button>
+            <button id="removeRangeBtn" class="small-btn danger">从目标帧删除</button>
+            <button id="copyShapesBtn" class="small-btn">复制框</button>
+            <button id="pasteShapesBtn" class="small-btn">粘贴到本帧</button>
+          </div>
         </div>
       </div>
 
@@ -1070,6 +1379,9 @@
     const sourceDirInput = document.getElementById('sourceDirInput');
     const outputDirInput = document.getElementById('outputDirInput');
     const sourceFileList = document.getElementById('sourceFileList');
+    const sourceFilter = document.getElementById('sourceFilter');
+    const sourceKindFilter = document.getElementById('sourceKindFilter');
+    const animatedFormatControl = document.getElementById('animatedFormatControl');
     const directoryMeta = document.getElementById('directoryMeta');
     const exportStatus = document.getElementById('exportStatus');
     const selectAllSourcesBtn = document.getElementById('selectAllSourcesBtn');
@@ -1096,6 +1408,12 @@
     const rangeHint = document.getElementById('rangeHint');
     const undoBtn = document.getElementById('undoBtn');
     const completeBtn = document.getElementById('completeBtn');
+    const applyRangeBtn = document.getElementById('applyRangeBtn');
+    const addRangeSegmentBtn = document.getElementById('addRangeSegmentBtn');
+    const clearRangeSegmentsBtn = document.getElementById('clearRangeSegmentsBtn');
+    const removeRangeBtn = document.getElementById('removeRangeBtn');
+    const copyShapesBtn = document.getElementById('copyShapesBtn');
+    const pasteShapesBtn = document.getElementById('pasteShapesBtn');
     const shortcutList = document.getElementById('shortcutList');
     const resetShortcutsBtn = document.getElementById('resetShortcutsBtn');
     const HISTORY_LIMIT = 40;
@@ -1137,12 +1455,13 @@
       frame: 0,
       annotations: { version: 1, files: {} },
       image: new Image(),
+      imageLoadSeq: 0,
       drawing: null,
-      drawingAdditive: false,
       pendingSelection: null,
       resizing: null,
       selectedId: null,
       selectedIds: [],
+      selectionAnchorId: null,
       dirty: false,
       savedSnapshot: '',
       history: [],
@@ -1157,10 +1476,16 @@
       rangeShapeIds: [],
       rangeStart: 0,
       rangeEnd: 0,
+      rangeSegments: [],
       activeRangeHandle: null,
       frameSliderDragging: false,
       drawingPointerId: null,
       scrollSourceIntoView: false,
+      sourceCollapsedDirs: new Set(),
+      sourceFilter: 'all',
+      sourceKindFilter: 'all',
+      animatedFormat: 'webp',
+      shapeClipboard: [],
       shortcuts: { ...DEFAULT_SHORTCUTS },
       capturingShortcut: null
     };
@@ -1218,6 +1543,11 @@
 
     function shortcutMatches(evt, action) {
       return Boolean(state.shortcuts[action]) && shortcutForEvent(evt) === state.shortcuts[action];
+    }
+
+    function hasTextSelection() {
+      const selection = window.getSelection();
+      return Boolean(selection && !selection.isCollapsed && selection.toString().trim());
     }
 
     function setShortcut(action, combo) {
@@ -1367,11 +1697,13 @@
         frame: state.frame,
         selectedId: state.selectedId,
         selectedIds: selectedIds(),
+        selectionAnchorId: state.selectionAnchorId,
         rangeSource: state.rangeSource,
         rangeSourceLocked: state.rangeSourceLocked,
         rangeShapeIds: [...state.rangeShapeIds],
         rangeStart: state.rangeStart,
         rangeEnd: state.rangeEnd,
+        rangeSegments: state.rangeSegments.map(segment => ({ ...segment })),
         label
       });
       if (state.history.length > HISTORY_LIMIT) state.history.shift();
@@ -1445,12 +1777,14 @@
       state.frame = entry.frame || 0;
       state.selectedId = entry.selectedId || null;
       state.selectedIds = entry.selectedIds?.length ? [...entry.selectedIds] : (entry.selectedId ? [entry.selectedId] : []);
+      state.selectionAnchorId = entry.selectionAnchorId || state.selectedId || null;
       syncPrimarySelection();
       state.rangeSource = entry.rangeSource || 0;
       state.rangeSourceLocked = Boolean(entry.rangeSourceLocked);
       state.rangeShapeIds = [...(entry.rangeShapeIds || [])];
       state.rangeStart = entry.rangeStart || 0;
       state.rangeEnd = entry.rangeEnd || 0;
+      state.rangeSegments = (entry.rangeSegments || []).map(segment => ({ ...segment }));
       resetCanvasInteraction();
       markDirtyFromSnapshot();
       renderDirectoryMeta();
@@ -1536,6 +1870,9 @@
     function syncPrimarySelection() {
       state.selectedIds = [...new Set(state.selectedIds || [])];
       state.selectedId = state.selectedIds[state.selectedIds.length - 1] || null;
+      if (state.selectionAnchorId && !state.selectedIds.includes(state.selectionAnchorId)) {
+        state.selectionAnchorId = state.selectedId;
+      }
     }
 
     function selectedFrameShapes() {
@@ -1551,6 +1888,7 @@
     function clearSelection() {
       state.selectedId = null;
       state.selectedIds = [];
+      state.selectionAnchorId = null;
       state.rangeShapeIds = [];
     }
 
@@ -1584,10 +1922,20 @@
       return [first ?? state.frame, last ?? state.frame];
     }
 
-    function selectRangeShapes(shapes) {
+    function selectRangeShapes(shapes, options = {}) {
       const nextShapes = shapes.filter(Boolean);
-      state.selectedIds = nextShapes.map(shape => shape.id);
-      syncPrimarySelection();
+      state.selectedIds = [...new Set(nextShapes.map(shape => shape.id))];
+      state.selectedId = options.primaryId && state.selectedIds.includes(options.primaryId)
+        ? options.primaryId
+        : (state.selectedIds[state.selectedIds.length - 1] || null);
+      if (Object.prototype.hasOwnProperty.call(options, 'anchorId')) {
+        state.selectionAnchorId = options.anchorId || null;
+      } else if (!state.selectionAnchorId) {
+        state.selectionAnchorId = state.selectedId;
+      }
+      if (state.selectionAnchorId && !state.selectedIds.includes(state.selectionAnchorId)) {
+        state.selectionAnchorId = state.selectedId;
+      }
       const rangeShapes = nextShapes.filter(isRangeShape);
       if (rangeShapes.length) {
         state.rangeSource = clampFrameIndex(state.frame);
@@ -1601,13 +1949,36 @@
       }
     }
 
+    function frameShapeRange(anchorId, targetId) {
+      const shapes = readFrameShapes();
+      const targetIndex = shapes.findIndex(shape => shape.id === targetId);
+      if (targetIndex < 0) return [];
+      const anchorIndex = shapes.findIndex(shape => shape.id === anchorId);
+      if (anchorIndex < 0) return [shapes[targetIndex]];
+      const start = Math.min(anchorIndex, targetIndex);
+      const end = Math.max(anchorIndex, targetIndex);
+      return shapes.slice(start, end + 1);
+    }
+
     function selectRangeShape(shape, options = {}) {
       if (!shape) {
         clearSelection();
         return;
       }
+      if (options.range) {
+        const anchorId = state.selectionAnchorId || state.selectedId || shape.id;
+        const rangeShapes = frameShapeRange(anchorId, shape.id);
+        if (options.additive) {
+          const selected = new Map(selectedFrameShapes().map(item => [item.id, item]));
+          for (const item of rangeShapes) selected.set(item.id, item);
+          selectRangeShapes([...selected.values()], { anchorId, primaryId: shape.id });
+        } else {
+          selectRangeShapes(rangeShapes, { anchorId, primaryId: shape.id });
+        }
+        return;
+      }
       if (!options.additive) {
-        selectRangeShapes([shape]);
+        selectRangeShapes([shape], { anchorId: shape.id, primaryId: shape.id });
         return;
       }
 
@@ -1616,7 +1987,13 @@
       const nextShapes = alreadySelected
         ? current.filter(item => item.id !== shape.id)
         : [...current, shape];
-      selectRangeShapes(nextShapes);
+      const nextAnchor = state.selectionAnchorId && nextShapes.some(item => item.id === state.selectionAnchorId)
+        ? state.selectionAnchorId
+        : (nextShapes[nextShapes.length - 1]?.id || null);
+      selectRangeShapes(nextShapes, {
+        anchorId: nextAnchor,
+        primaryId: alreadySelected ? nextAnchor : shape.id
+      });
     }
 
     function rangeSourceShapes() {
@@ -1642,8 +2019,7 @@
     function rangePreviewShapes() {
       const file = currentFile();
       if (!file || isSingleFrame(file)) return [];
-      const [start, end] = normalizedRange();
-      if (state.frame < start || state.frame > end) return [];
+      if (!targetFrameSet().has(state.frame)) return [];
       const sourceShapes = rangeSourceShapes();
       if (!sourceShapes.length) return [];
       const currentTracks = new Set(readFrameShapes(file.id, state.frame).filter(isRangeShape).map(shapeTrackId));
@@ -1659,6 +2035,7 @@
       state.rangeSourceLocked = true;
       state.rangeShapeIds = [ensureShapeTrack(shapes[shapes.length - 1])];
       state.selectedIds = [shapes[shapes.length - 1].id];
+      state.selectionAnchorId = shapes[shapes.length - 1].id;
       syncPrimarySelection();
     }
 
@@ -1740,7 +2117,6 @@
 
     function resetCanvasInteraction() {
       state.drawing = null;
-      state.drawingAdditive = false;
       state.pendingSelection = null;
       state.resizing = null;
       canvas.style.cursor = '';
@@ -1769,6 +2145,7 @@
         syncFrameControls();
         renderRangeControls();
         renderActionControls();
+        if (state.workspace) renderSourceFileList();
       }
     }
 
@@ -1834,9 +2211,95 @@
       ];
     }
 
+    function currentRangeSegment() {
+      const [start, end] = normalizedRange();
+      return { start, end };
+    }
+
+    function mergeRangeSegments(segments) {
+      const file = currentFile();
+      if (!file) return [];
+      const normalized = segments
+        .map(segment => ({
+          start: clampFrameIndex(Math.min(segment.start, segment.end)),
+          end: clampFrameIndex(Math.max(segment.start, segment.end))
+        }))
+        .sort((a, b) => a.start - b.start || a.end - b.end);
+      const merged = [];
+      for (const segment of normalized) {
+        const last = merged[merged.length - 1];
+        if (last && segment.start <= last.end + 1) {
+          last.end = Math.max(last.end, segment.end);
+        } else {
+          merged.push({ ...segment });
+        }
+      }
+      return merged;
+    }
+
+    function targetRangeSegments() {
+      return state.rangeSegments.length
+        ? state.rangeSegments
+        : [currentRangeSegment()];
+    }
+
+    function targetFrameIndexes() {
+      const frames = new Set();
+      for (const segment of targetRangeSegments()) {
+        for (let frame = segment.start; frame <= segment.end; frame += 1) {
+          frames.add(clampFrameIndex(frame));
+        }
+      }
+      return [...frames].sort((a, b) => a - b);
+    }
+
+    function targetFrameSet() {
+      return new Set(targetFrameIndexes());
+    }
+
+    function formatRangeSegments(segments = targetRangeSegments()) {
+      return segments
+        .map(segment => segment.start === segment.end
+          ? `${segment.start + 1}`
+          : `${segment.start + 1}-${segment.end + 1}`)
+        .join('、');
+    }
+
     function setRange(start, end) {
       state.rangeStart = clampFrameIndex(start);
       state.rangeEnd = clampFrameIndex(end);
+      renderRangeControls();
+      draw();
+    }
+
+    function addCurrentRangeSegment() {
+      state.rangeSegments = mergeRangeSegments([...state.rangeSegments, currentRangeSegment()]);
+      renderRangeControls();
+      draw();
+    }
+
+    function clearRangeSegments() {
+      state.rangeSegments = [];
+      renderRangeControls();
+      draw();
+    }
+
+    function setWholeRangeTarget() {
+      const file = currentFile();
+      if (!file) return;
+      state.rangeStart = 0;
+      state.rangeEnd = file.frameCount - 1;
+      state.rangeSegments = [{ start: 0, end: file.frameCount - 1 }];
+      renderRangeControls();
+      draw();
+    }
+
+    function toggleTargetFrame(frame) {
+      const target = clampFrameIndex(frame);
+      const frames = targetFrameSet();
+      if (frames.has(target)) frames.delete(target);
+      else frames.add(target);
+      state.rangeSegments = mergeRangeSegments([...frames].map(item => ({ start: item, end: item })));
       renderRangeControls();
       draw();
     }
@@ -1878,6 +2341,7 @@
       }
 
       const [start, end] = normalizedRange();
+      const targets = targetFrameSet();
       const sourceTracks = new Set(rangeSourceShapes().map(shapeTrackId));
       rangeFrameStrip.style.gridTemplateColumns = `repeat(${file.frameCount}, minmax(2px, 1fr))`;
       for (let frame = 0; frame < file.frameCount; frame++) {
@@ -1885,8 +2349,9 @@
         const classes = ['range-frame'];
         const frameShapes = readFrameShapes(file.id, frame);
         const frameTracks = new Set(frameShapes.filter(isRangeShape).map(shapeTrackId));
-        const willApply = frame >= start && frame <= end && [...sourceTracks].some(trackId => !frameTracks.has(trackId));
-        if (frame >= start && frame <= end) classes.push('in-range');
+        const willApply = targets.has(frame) && [...sourceTracks].some(trackId => !frameTracks.has(trackId));
+        if (targets.has(frame)) classes.push('in-range');
+        if (state.rangeSegments.length && frame >= start && frame <= end && !targets.has(frame)) classes.push('draft-range');
         if (willApply) classes.push('will-apply');
         if (frame === state.rangeSource) classes.push('source');
         if (frame === state.frame) classes.push('current');
@@ -1894,8 +2359,16 @@
         button.className = classes.join(' ');
         button.type = 'button';
         button.disabled = isSingleFrame(file) || state.busy;
-        button.title = willApply ? `第 ${frame + 1} 帧 · 待应用` : `第 ${frame + 1} 帧`;
-        button.addEventListener('click', () => setFrame(frame));
+        button.title = targets.has(frame)
+          ? `第 ${frame + 1} 帧 · 目标帧`
+          : `第 ${frame + 1} 帧`;
+        button.addEventListener('click', evt => {
+          if (evt.ctrlKey || evt.metaKey) {
+            toggleTargetFrame(frame);
+          } else {
+            setFrame(frame);
+          }
+        });
         rangeFrameStrip.appendChild(button);
       }
     }
@@ -1904,7 +2377,6 @@
       const file = currentFile();
       const singleFrame = isSingleFrame(file);
       const disabled = !file || state.busy || singleFrame;
-      const applyRangeBtn = document.getElementById('applyRangeBtn');
       [
         rangeStartHandle,
         rangeEndHandle,
@@ -1912,12 +2384,19 @@
         document.getElementById('setRangeStartBtn'),
         document.getElementById('setRangeEndBtn'),
         document.getElementById('setWholeRangeBtn'),
-        applyRangeBtn
+        addRangeSegmentBtn,
+        clearRangeSegmentsBtn,
+        applyRangeBtn,
+        removeRangeBtn
       ].forEach(element => {
         element.disabled = disabled;
       });
+      copyShapesBtn.disabled = !file || state.busy || !selectedFrameShapes().length;
+      pasteShapesBtn.disabled = !file || state.busy || !state.shapeClipboard.length;
 
       if (!file) {
+        rangeTimeline.querySelectorAll('.range-target-segment').forEach(element => element.remove());
+        rangeSelection.classList.remove('draft');
         rangeSelection.style.left = '0%';
         rangeSelection.style.width = '0%';
         rangeSource.style.left = '0%';
@@ -1935,9 +2414,23 @@
       state.rangeSource = clampFrameIndex(state.rangeSource);
       state.rangeStart = clampFrameIndex(state.rangeStart);
       state.rangeEnd = clampFrameIndex(state.rangeEnd);
+      state.rangeSegments = mergeRangeSegments(state.rangeSegments);
       const [start, end] = normalizedRange();
       const startPct = percentForFrame(start);
       const endPct = percentForFrame(end);
+      const explicitSegments = state.rangeSegments.length ? targetRangeSegments() : [];
+      const targetSegments = targetRangeSegments();
+      const targetCount = targetFrameIndexes().length;
+      const track = rangeTimeline.querySelector('.range-track');
+      track.querySelectorAll('.range-target-segment').forEach(element => element.remove());
+      explicitSegments.forEach(segment => {
+        const marker = document.createElement('div');
+        marker.className = 'range-target-segment';
+        marker.style.left = `${percentForFrame(segment.start)}%`;
+        marker.style.width = `${Math.max(0, percentForFrame(segment.end) - percentForFrame(segment.start))}%`;
+        track.insertBefore(marker, rangeSelection);
+      });
+      rangeSelection.classList.toggle('draft', Boolean(explicitSegments.length));
       rangeSelection.style.left = `${startPct}%`;
       rangeSelection.style.width = `${Math.max(0, endPct - startPct)}%`;
       rangeSource.style.left = `${percentForFrame(state.rangeSource)}%`;
@@ -1946,13 +2439,19 @@
       rangeEndHandle.style.left = `${percentForFrame(state.rangeEnd)}%`;
       const sourceCount = rangeSourceShapes().length;
       rangeSourceText.textContent = `第 ${state.rangeSource + 1} 帧 · ${sourceCount} 矩形`;
-      rangeSpanText.textContent = `${start + 1}-${end + 1}`;
-      rangeCountText.textContent = `${end - start + 1} 帧`;
-      applyRangeBtn.disabled = disabled || !sourceCount;
+      rangeSpanText.textContent = formatRangeSegments(targetSegments);
+      rangeCountText.textContent = `${targetCount} 帧`;
+      applyRangeBtn.disabled = disabled || !sourceCount || !targetCount;
+      removeRangeBtn.disabled = disabled || !sourceCount || !targetCount;
+      clearRangeSegmentsBtn.disabled = disabled || !state.rangeSegments.length;
       if (!sourceCount && countFileShapes(file.id)) {
         rangeHint.textContent = '点选一个矩形';
       } else if (!sourceCount) {
         rangeHint.textContent = '画一个矩形';
+      } else if (explicitSegments.length > 1) {
+        rangeHint.textContent = `${explicitSegments.length} 段目标帧`;
+      } else if (explicitSegments.length) {
+        rangeHint.textContent = '已锁定目标帧';
       } else if (rangePreviewShapes().length) {
         rangeHint.textContent = '蓝色虚线是预览';
       } else if (state.frame !== state.rangeSource) {
@@ -1965,6 +2464,8 @@
         rangeSpanText.textContent = '无需范围';
         rangeCountText.textContent = '-';
         rangeHint.textContent = '静态图不用设范围';
+        copyShapesBtn.disabled = !file || state.busy || !selectedFrameShapes().length;
+        pasteShapesBtn.disabled = !file || state.busy || !state.shapeClipboard.length;
       }
       renderRangeFrameStrip();
     }
@@ -1979,31 +2480,83 @@
         return;
       }
 
-      const [start, end] = normalizedRange();
-      pushHistory('应用矩形范围');
+      const targets = targetFrameIndexes();
+      if (!targets.length) {
+        statusEl.textContent = '没有目标帧';
+        return;
+      }
+
+      pushHistory('应用矩形到目标帧');
       markCurrentFileEdited();
       const store = fileStore(file.id);
       const sourceTracks = source.map(ensureShapeTrack);
       const sourceTrackSet = new Set(sourceTracks);
-      for (const frameKey of Object.keys(store.frames || {})) {
-        const shapes = Array.isArray(store.frames[frameKey]) ? store.frames[frameKey] : [];
-        store.frames[frameKey] = shapes.filter(shape => !sourceTrackSet.has(shapeTrackId(shape)));
-      }
-      for (let frame = start; frame <= end; frame++) {
+      for (const frame of targets) {
         const key = String(frame);
         const shapes = Array.isArray(store.frames[key]) ? store.frames[key] : [];
-        store.frames[key] = [...shapes, ...source.map(cloneShapeForRange)];
+        const withoutSameTracks = shapes.filter(shape => !sourceTrackSet.has(shapeTrackId(shape)));
+        store.frames[key] = [...withoutSameTracks, ...source.map(cloneShapeForRange)];
       }
       state.rangeShapeIds = sourceTracks;
       const currentShapes = readFrameShapes(file.id, state.frame)
         .filter(shape => sourceTrackSet.has(shapeTrackId(shape)));
       state.selectedIds = currentShapes.map(shape => shape.id);
+      state.selectionAnchorId = state.selectedIds[0] || null;
       syncPrimarySelection();
       setDirty(true);
       renderShapeList();
       renderRangeControls();
       draw();
-      statusEl.textContent = `已把第 ${sourceFrame + 1} 帧的 ${source.length} 个矩形应用到 ${start + 1}-${end + 1}`;
+      statusEl.textContent = `已把第 ${sourceFrame + 1} 帧的 ${source.length} 个矩形应用到 ${formatRangeSegments()}`;
+    }
+
+    function removeRangeShapesFromFrames() {
+      const file = currentFile();
+      if (!file) return;
+      const source = rangeSourceShapes();
+      if (!source.length) {
+        statusEl.textContent = '没有可删除的当前矩形';
+        return;
+      }
+      const targets = targetFrameIndexes();
+      if (!targets.length) {
+        statusEl.textContent = '没有目标帧';
+        return;
+      }
+
+      const sourceTracks = source.map(ensureShapeTrack);
+      const sourceTrackSet = new Set(sourceTracks);
+      const store = fileStore(file.id);
+      const removableCount = targets.reduce((total, frame) => {
+        const shapes = Array.isArray(store.frames[String(frame)]) ? store.frames[String(frame)] : [];
+        return total + shapes.filter(shape => sourceTrackSet.has(shapeTrackId(shape))).length;
+      }, 0);
+      if (!removableCount) {
+        statusEl.textContent = '目标帧没有这些矩形';
+        return;
+      }
+
+      pushHistory('从目标帧删除矩形');
+      markCurrentFileEdited();
+      let removed = 0;
+      for (const frame of targets) {
+        const key = String(frame);
+        const shapes = Array.isArray(store.frames[key]) ? store.frames[key] : [];
+        const next = shapes.filter(shape => !sourceTrackSet.has(shapeTrackId(shape)));
+        removed += shapes.length - next.length;
+        store.frames[key] = next;
+      }
+      state.rangeShapeIds = state.rangeShapeIds.filter(trackId => !sourceTrackSet.has(trackId));
+      const currentShapes = readFrameShapes(file.id, state.frame)
+        .filter(shape => sourceTrackSet.has(shapeTrackId(shape)));
+      state.selectedIds = currentShapes.map(shape => shape.id);
+      state.selectionAnchorId = state.selectedIds[0] || null;
+      syncPrimarySelection();
+      setDirty(true);
+      renderShapeList();
+      renderRangeControls();
+      draw();
+      statusEl.textContent = `已从 ${formatRangeSegments()} 删除 ${removed} 个矩形`;
     }
 
     function setFrame(frame) {
@@ -2020,6 +2573,7 @@
         ? readFrameShapes(file.id, state.frame).filter(shape => shapeMatchesRangeSelection(shape, selectedTracks))
         : [];
       state.selectedIds = matchingShapes.map(shape => shape.id);
+      state.selectionAnchorId = state.selectedIds[0] || null;
       syncPrimarySelection();
       renderRangeControls();
       loadFrameImage();
@@ -2035,6 +2589,7 @@
       state.frame = 0;
       state.selectedId = null;
       state.selectedIds = [];
+      state.selectionAnchorId = null;
       resetCanvasInteraction();
       const file = currentFile();
       const singleFrame = isSingleFrame(file);
@@ -2045,11 +2600,13 @@
       nextBtn.disabled = singleFrame;
       topbar.classList.toggle('static', singleFrame);
       frameKindText.textContent = fileKindText(file);
+      expandSourceDirectoryForId(file.id);
       state.rangeSource = 0;
       state.rangeSourceLocked = false;
       state.rangeShapeIds = [];
       state.rangeStart = 0;
       state.rangeEnd = 0;
+      state.rangeSegments = [];
       renderFileList();
       renderRangeControls();
       renderActionControls();
@@ -2062,6 +2619,7 @@
     }
 
     function clearCanvas(message) {
+      state.imageLoadSeq += 1;
       canvas.width = 1;
       canvas.height = 1;
       ctx.clearRect(0, 0, 1, 1);
@@ -2085,20 +2643,32 @@
         clearCanvas('没有帧');
         return;
       }
+      const frameUrl = file.frames[state.frame];
+      if (!frameUrl) {
+        clearCanvas('当前文件没有可显示帧');
+        return;
+      }
+      const loadSeq = ++state.imageLoadSeq;
       statusEl.textContent = `${file.name}`;
       frameText.textContent = `${state.frame + 1} / ${file.frameCount}`;
       frameKindText.textContent = fileKindText(file);
       topbar.classList.toggle('static', isSingleFrame(file));
-      state.image = new Image();
-      state.image.onload = () => {
-        canvas.width = state.image.naturalWidth;
-        canvas.height = state.image.naturalHeight;
+      const image = new Image();
+      state.image = image;
+      image.onload = () => {
+        if (loadSeq !== state.imageLoadSeq) return;
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
         renderShapeList();
         renderRangeControls();
         renderActionControls();
         draw();
       };
-      state.image.src = `${file.frames[state.frame]}?v=${Date.now()}`;
+      image.onerror = () => {
+        if (loadSeq !== state.imageLoadSeq) return;
+        clearCanvas('帧加载失败，请刷新列表后重试');
+      };
+      image.src = `${frameUrl}?v=${Date.now()}`;
     }
 
     function activeIdsFromWorkspace() {
@@ -2113,17 +2683,53 @@
       return ids;
     }
 
-    async function updateActiveFiles(nextIds) {
-      setBusy(true, '更新处理列表...');
-      try {
-        const data = await apiJson('/api/config', {
-          method: 'POST',
-          body: JSON.stringify({ activeFiles: [...nextIds].sort() })
+    function applyActiveFilesToWorkspace(nextIds) {
+      if (!state.workspace) return;
+      const activeIds = new Set([...nextIds].filter(Boolean));
+      for (const source of state.workspace.sourceFiles || []) {
+        source.active = activeIds.has(source.id);
+      }
+      for (const file of state.workspace.frames || []) {
+        file.active = activeIds.has(file.id);
+      }
+      state.workspace.activeFiles = [...activeIds].sort();
+      state.workspace.activeFilesConfigured = true;
+    }
+
+    function manifestFromWorkspace(workspace = state.workspace) {
+      const activeFilesConfigured = Boolean(workspace?.activeFilesConfigured);
+      const activeFiles = new Set(workspace?.activeFiles || []);
+      const files = [];
+      for (const record of workspace?.frames || []) {
+        if (activeFilesConfigured && !activeFiles.has(record.id)) continue;
+        files.push({
+          id: record.id,
+          name: record.sourceName || record.name,
+          kind: record.kind,
+          frameCount: record.frameCount,
+          frames: record.frames || [],
+          annotatedFrameCount: record.annotatedFrameCount,
+          missingSource: record.missingSource
         });
-        applyWorkspaceAndManifest(data.workspace, data.manifest);
-        statusEl.textContent = '处理列表已更新';
-      } finally {
-        setBusy(false);
+      }
+      return { files, annotationsPath: workspace?.annotationsPath || '' };
+    }
+
+    async function updateActiveFiles(nextIds) {
+      const nextActiveIds = new Set([...nextIds].filter(Boolean));
+      const previousActiveIds = activeIdsFromWorkspace();
+      applyActiveFilesToWorkspace(nextActiveIds);
+      applyWorkspaceAndManifest(state.workspace, manifestFromWorkspace());
+      statusEl.textContent = '勾选列表已更新';
+      try {
+        await apiJson('/api/config', {
+          method: 'POST',
+          body: JSON.stringify({ activeFiles: [...nextActiveIds].sort(), activeOnly: true })
+        });
+      } catch (error) {
+        applyActiveFilesToWorkspace(previousActiveIds);
+        applyWorkspaceAndManifest(state.workspace, manifestFromWorkspace());
+        throw error;
       }
     }
 
@@ -2187,7 +2793,7 @@
       if (!sourceDir) return;
       if (!outputDir) return;
       const previousDir = state.workspace?.sourceDir || '';
-      setBusy(true, '保存目录...');
+      setBusy(true, '应用目录...');
       try {
         const data = await apiJson('/api/config', {
           method: 'POST',
@@ -2197,10 +2803,30 @@
         const nextDir = data.workspace?.sourceDir || '';
         if (nextDir && nextDir !== previousDir) {
           await updateActiveFiles(new Set((data.workspace.sourceFiles || []).map(source => source.id)));
-          statusEl.textContent = '目录已保存，已全选当前目录图片';
+          statusEl.textContent = '目录已应用，已选择当前图片';
         } else {
-          statusEl.textContent = '目录已保存';
+          statusEl.textContent = '目录已应用';
         }
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function pickDirectory(kind) {
+      const isOutput = kind === 'output';
+      const input = isOutput ? outputDirInput : sourceDirInput;
+      setBusy(true, isOutput ? '选择导出目录...' : '选择图片目录...');
+      try {
+        const data = await apiJson('/api/select-directory', {
+          method: 'POST',
+          body: JSON.stringify({ kind, currentDir: input.value.trim() })
+        });
+        if (!data.path) {
+          statusEl.textContent = '已取消选择目录';
+          return;
+        }
+        input.value = data.path;
+        statusEl.textContent = isOutput ? '已选择导出目录' : '已选择图片目录';
       } finally {
         setBusy(false);
       }
@@ -2209,18 +2835,19 @@
     async function extractAssets(assetIds, overwrite = false) {
       const ids = assetIds.filter(Boolean);
       if (!ids.length) {
-        statusEl.textContent = '没有选中文件';
+        statusEl.textContent = '没有勾选文件';
         return;
       }
-      setBusy(true, overwrite ? '重新加载...' : '加载中...');
+      setBusy(true, overwrite ? '刷新源图...' : '导入源图...');
       try {
         const data = await apiJson('/api/extract', {
           method: 'POST',
           body: JSON.stringify({ assetIds: ids, overwrite })
         });
-        applyWorkspaceAndManifest(data.workspace, data.manifest);
+        const firstReady = data.results.find(item => ['imported', 'skipped'].includes(item.status));
+        applyWorkspaceAndManifest(data.workspace, data.manifest, { preferredId: firstReady?.id });
         const summary = data.results.map(item => `${item.id}:${item.status}`).join(' ');
-        statusEl.textContent = summary || '加载完成';
+        statusEl.textContent = summary || '导入完成';
       } finally {
         setBusy(false);
       }
@@ -2229,6 +2856,139 @@
     function basenamePath(path) {
       const parts = String(path || '').split(/[\\/]/).filter(Boolean);
       return parts[parts.length - 1] || path || '';
+    }
+
+    function sourceDirectoryParts(source) {
+      const relativePath = String(source?.relativePath || source?.name || source?.baseName || '');
+      const parts = relativePath.split(/[\\/]/).filter(Boolean);
+      parts.pop();
+      return parts;
+    }
+
+    function sourceDirectoryKey(source) {
+      return sourceDirectoryParts(source).join('/') || '.';
+    }
+
+    function sourceDirectoryLabel(key) {
+      return key === '.' ? '图片目录' : key;
+    }
+
+    function sourceDisplayName(source) {
+      return source.baseName || basenamePath(source.relativePath || source.name || source.id);
+    }
+
+    function sourceMatchesFilter(source) {
+      const completionMatches = state.sourceFilter === 'complete'
+        ? isFileComplete(source.id)
+        : state.sourceFilter === 'incomplete'
+          ? !isFileComplete(source.id)
+          : true;
+      const kindMatches = state.sourceKindFilter === 'all' || source.kind === state.sourceKindFilter;
+      return completionMatches && kindMatches;
+    }
+
+    function filteredSourceFiles() {
+      return (state.workspace?.sourceFiles || []).filter(sourceMatchesFilter);
+    }
+
+    function sourceFilterEmptyText() {
+      const completion = state.sourceFilter === 'complete'
+        ? '已完成'
+        : state.sourceFilter === 'incomplete'
+          ? '未完成'
+          : '';
+      const kind = state.sourceKindFilter === 'animated'
+        ? '动图'
+        : state.sourceKindFilter === 'static'
+          ? '静态图'
+          : '';
+      const label = [completion, kind].filter(Boolean).join(' · ');
+      return label ? `没有${label}文件` : '没有文件';
+    }
+
+    function renderSourceFilter() {
+      sourceFilter.querySelectorAll('button').forEach(button => {
+        const active = button.dataset.filter === state.sourceFilter;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+      sourceKindFilter.querySelectorAll('button').forEach(button => {
+        const active = button.dataset.kind === state.sourceKindFilter;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+      animatedFormatControl.querySelectorAll('button').forEach(button => {
+        const active = button.dataset.format === state.animatedFormat;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+      });
+    }
+
+    function sourceStatus(source) {
+      const annotated = countAnnotatedFrames(source.id);
+      const completion = fileCompletionLabel(source.id);
+      if (source.imported && source.stale) {
+        return { text: '待刷新', className: 'warn' };
+      }
+      if (source.imported && completion) {
+        return { text: completion, className: 'complete' };
+      }
+      if (source.imported && annotated) {
+        return { text: `已标 ${annotated}/${source.frameCount}`, className: 'changed' };
+      }
+      return null;
+    }
+
+    function emptySourceTreeNode(key, name, depth) {
+      return {
+        key,
+        name,
+        depth,
+        dirs: new Map(),
+        sources: [],
+        sourceIds: [],
+        sourceCount: 0,
+        importedCount: 0,
+        completedCount: 0,
+        activeCount: 0
+      };
+    }
+
+    function buildSourceTree(sources = filteredSourceFiles()) {
+      const root = emptySourceTreeNode('.', '图片目录', -1);
+      for (const source of sources) {
+        const parts = sourceDirectoryParts(source);
+        let node = root;
+        for (let index = 0; index < parts.length; index += 1) {
+          const key = parts.slice(0, index + 1).join('/');
+          if (!node.dirs.has(parts[index])) {
+            node.dirs.set(parts[index], emptySourceTreeNode(key, parts[index], index));
+          }
+          node = node.dirs.get(parts[index]);
+        }
+        node.sources.push(source);
+      }
+
+      function finalize(node) {
+        node.dirs = [...node.dirs.values()].sort((a, b) => a.name.localeCompare(b.name));
+        node.sources.sort((a, b) => sourceDisplayName(a).localeCompare(sourceDisplayName(b)));
+        node.sourceIds = node.sources.map(source => source.id);
+        node.sourceCount = node.sources.length;
+        node.importedCount = node.sources.filter(source => source.imported).length;
+        node.completedCount = node.sources.filter(source => isFileComplete(source.id)).length;
+        node.activeCount = node.sources.filter(source => source.active).length;
+        for (const child of node.dirs) {
+          finalize(child);
+          node.sourceIds.push(...child.sourceIds);
+          node.sourceCount += child.sourceCount;
+          node.importedCount += child.importedCount;
+          node.completedCount += child.completedCount;
+          node.activeCount += child.activeCount;
+        }
+        return node;
+      }
+
+      return finalize(root);
     }
 
     function renderExportResults(results, outputDir = '') {
@@ -2246,25 +3006,47 @@
       }
       if (!results?.length) return;
 
-      for (const result of results) {
-        const line = document.createElement('div');
-        line.className = 'export-line';
-        if (result.status === 'rendered') {
-          const kind = sourceKindLabel(result.kind);
-          const scale = Number(result.scale || 1);
-          const meta = [
-            kind,
-            formatBytes(result.size),
-            result.quality ? `q${result.quality}` : '',
-            scale < 0.999 ? `${Math.round(scale * 100)}%` : ''
-          ].filter(Boolean).join(' · ');
-          const name = result.outputName || result.id;
-          line.title = result.output || '';
-          line.innerHTML = `<strong>${name}</strong><span>${meta}</span>`;
-        } else {
-          line.innerHTML = `<strong>${result.id}</strong><span>失败 · ${result.error || result.status}</span>`;
-        }
-        exportStatus.appendChild(line);
+      const rendered = results.filter(result => result.status === 'rendered');
+      const failed = results.filter(result => result.status !== 'rendered');
+      const formatCounts = rendered.reduce((counts, result) => {
+        const format = String(result.format || '').toUpperCase() || '文件';
+        counts[format] = (counts[format] || 0) + 1;
+        return counts;
+      }, {});
+
+      const summary = document.createElement('div');
+      summary.className = 'export-summary';
+      const title = document.createElement('strong');
+      title.textContent = failed.length
+        ? `导出完成：成功 ${rendered.length}，失败 ${failed.length}`
+        : `导出完成：成功 ${rendered.length}`;
+      const detail = document.createElement('span');
+      const formatText = Object.entries(formatCounts)
+        .map(([format, count]) => `${format} ${count}`)
+        .join(' · ');
+      const totalBytes = rendered.reduce((total, result) => total + Number(result.size || 0), 0);
+      detail.textContent = [formatText, totalBytes ? `总大小 ${formatBytes(totalBytes)}` : '']
+        .filter(Boolean)
+        .join(' · ');
+      summary.append(title, detail);
+      exportStatus.appendChild(summary);
+
+      if (failed.length) {
+        const failure = document.createElement('div');
+        failure.className = 'export-summary export-failure';
+        const failureTitle = document.createElement('strong');
+        failureTitle.textContent = '失败文件';
+        const names = failed.slice(0, 6).map(result => sourceDisplayName({
+          baseName: basenamePath(result.outputName || result.id),
+          id: result.id,
+        }) + (result.error ? `（${result.error}）` : ''));
+        const failureDetail = document.createElement('span');
+        failureDetail.textContent = `${names.join('、')}${failed.length > names.length ? ` 等 ${failed.length} 个` : ''}`;
+        failureDetail.title = failed
+          .map(result => `${result.id}: ${result.error || result.status || '导出失败'}`)
+          .join('\n');
+        failure.append(failureTitle, failureDetail);
+        exportStatus.appendChild(failure);
       }
     }
 
@@ -2285,7 +3067,7 @@
             <span>${done}/${total || '-'}</span>
           </div>
           <div class="export-progress-bar"><div class="export-progress-fill" style="width:${percent}%"></div></div>
-          <div class="muted">${current ? `当前：${current}` : '准备压缩'} · ${elapsed}s</div>
+          <div class="muted">${current ? `当前：${basenamePath(current)}` : '准备压缩'} · ${elapsed}s</div>
         </div>
       `;
     }
@@ -2304,7 +3086,7 @@
     async function startExportRender(ids, startedAt) {
       const request = {
         method: 'POST',
-        body: JSON.stringify({ assetIds: ids, maxBytes: 1024 * 1024 })
+        body: JSON.stringify({ assetIds: ids, maxBytes: 1024 * 1024, animatedFormat: state.animatedFormat })
       };
       try {
         const data = await apiJson('/api/render/start', request);
@@ -2324,17 +3106,13 @@
       }
     }
 
-    async function exportSelectedAssets() {
-      const ids = [...activeIdsFromWorkspace()].filter(id => {
-        const source = state.workspace?.sourceFiles.find(item => item.id === id);
-        return source && source.imported;
-      });
-      if (!ids.length) {
-        statusEl.textContent = '没有可导出文件';
-        return;
-      }
+    async function exportSources(sources, options = {}) {
+      const sourcesToExport = sources.filter(Boolean);
+      const ids = sourcesToExport.map(source => source.id);
+      if (!ids.length) return;
 
-      setBusy(true, `准备导出 ${ids.length} 个文件...`);
+      const progressText = options.progressText || `准备导出 ${ids.length} 个文件...`;
+      setBusy(true, progressText);
       const startedAt = Date.now();
       renderExportProgress({ status: 'queued', total: ids.length, done: 0 }, startedAt);
       try {
@@ -2346,12 +3124,63 @@
         renderExportResults(results, outputDir);
         const okCount = results.filter(item => item.status === 'rendered').length;
         const failedCount = results.length - okCount;
-        statusEl.textContent = failedCount
-          ? `导出完成 ${okCount} 个，失败 ${failedCount} 个`
-          : `已导出 ${okCount} 个压缩 WebP${outputDir ? ` · ${basenamePath(outputDir)}` : ''}`;
+        if (failedCount) {
+          statusEl.textContent = `导出完成 ${okCount} 个，失败 ${failedCount} 个`;
+        } else if (options.successText) {
+          statusEl.textContent = options.successText(okCount, outputDir);
+        } else {
+          statusEl.textContent = `已导出 ${okCount} 个文件${outputDir ? ` · ${basenamePath(outputDir)}` : ''}`;
+        }
       } finally {
         setBusy(false);
       }
+    }
+
+    function sourceExportBlocker(source) {
+      if (!source) return '没有可导出的图片';
+      if (!source.imported) return '这张图还未导入源图';
+      if (source.stale) return '源图已变化，请先刷新源图';
+      return '';
+    }
+
+    async function exportSingleSource(sourceId) {
+      const source = (state.workspace?.sourceFiles || []).find(item => item.id === sourceId);
+      const blocker = sourceExportBlocker(source);
+      if (blocker) {
+        statusEl.textContent = blocker;
+        return;
+      }
+      const name = sourceDisplayName(source);
+      await exportSources([source], {
+        progressText: `准备导出 ${name}...`,
+        successText: (_okCount, outputDir) => `已导出 ${name}${outputDir ? ` · ${basenamePath(outputDir)}` : ''}`
+      });
+    }
+
+    async function exportSelectedAssets() {
+      const activeIds = activeIdsFromWorkspace();
+      const activeSources = (state.workspace?.sourceFiles || []).filter(source => activeIds.has(source.id));
+      const completedSources = activeSources.filter(source => isFileComplete(source.id));
+      const exportSources = completedSources.filter(source => source.imported && !source.stale);
+      const ids = exportSources.map(source => source.id);
+      if (!ids.length) {
+        if (!activeSources.length) {
+          statusEl.textContent = '没有勾选文件';
+        } else if (!completedSources.length) {
+          statusEl.textContent = '没有已完成文件';
+        } else if (completedSources.some(source => source.stale)) {
+          statusEl.textContent = '已完成文件源图已变化，请先刷新源图';
+        } else if (completedSources.some(source => !source.imported)) {
+          statusEl.textContent = '已完成文件还未导入源图';
+        } else {
+          statusEl.textContent = '没有可导出的已完成文件';
+        }
+        return;
+      }
+      await exportSources(exportSources, {
+        progressText: `准备导出 ${ids.length} 个已完成文件...`,
+        successText: (okCount, outputDir) => `已导出 ${okCount} 个已完成文件${outputDir ? ` · ${basenamePath(outputDir)}` : ''}`
+      });
     }
 
     function renderDirectoryMeta() {
@@ -2360,92 +3189,219 @@
       const importedCount = state.workspace.sourceFiles.filter(source => source.imported).length;
       const staleCount = state.workspace.sourceFiles.filter(source => source.stale).length;
       const completedCount = state.workspace.sourceFiles.filter(source => isFileComplete(source.id)).length;
-      const activeCount = activeIdsFromWorkspace().size;
+      const activeCount = state.workspace.sourceFiles.filter(source => source.active).length;
+      const allActive = sourceCount > 0 && activeCount === sourceCount;
+      renderSourceFilter();
       directoryMeta.textContent = [
         `图 ${sourceCount}`,
-        `已载 ${importedCount}`,
-        staleCount ? `待更新 ${staleCount}` : '',
+        `已导入 ${importedCount}`,
+        staleCount ? `待刷新 ${staleCount}` : '',
         `完成 ${completedCount}`,
-        `选中 ${activeCount}`
+        `勾选 ${activeCount}`
       ].filter(Boolean).join(' · ');
+      selectAllSourcesBtn.textContent = allActive ? '取消全选' : '勾选全部';
+      selectAllSourcesBtn.title = allActive ? '取消勾选全部图片' : '勾选当前目录下全部图片';
+    }
+
+    function expandSourceDirectoryForId(sourceId) {
+      const source = state.workspace?.sourceFiles.find(item => item.id === sourceId);
+      if (!source) return;
+      const parts = sourceDirectoryParts(source);
+      for (let index = 1; index <= parts.length; index += 1) {
+        state.sourceCollapsedDirs.delete(parts.slice(0, index).join('/'));
+      }
+    }
+
+    function renderSourceFileItem(source, depth) {
+      const item = document.createElement('div');
+      const fileIndex = fileIndexForSource(source.id);
+      const isCurrent = fileIndex >= 0 && fileIndex === state.activeFile;
+      const canOpenOrImport = fileIndex >= 0 || !source.imported;
+      item.className = `source-tree-row file source-item kind-${source.kind}${canOpenOrImport ? ' selectable' : ''}${isCurrent ? ' current' : ''}`;
+      item.style.setProperty('--tree-indent', `${depth * 14}px`);
+      item.dataset.sourceId = source.id;
+      item.title = source.relativePath || source.name || source.id;
+      if (canOpenOrImport) {
+        item.addEventListener('click', evt => {
+          if (evt.target.closest('button, input')) return;
+          if (fileIndex >= 0) {
+            selectFile(fileIndex);
+          } else {
+            extractAssets([source.id], false).catch(showError);
+          }
+        });
+      }
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'source-tree-check';
+      checkbox.checked = source.active;
+      checkbox.disabled = state.busy;
+      checkbox.title = '勾选后参与批量导入，导出时仍只导出已完成文件';
+      checkbox.addEventListener('click', evt => evt.stopPropagation());
+      checkbox.addEventListener('change', () => {
+        const next = activeIdsFromWorkspace();
+        if (checkbox.checked) next.add(source.id);
+        else next.delete(source.id);
+        updateActiveFiles(next).catch(showError);
+      });
+
+      const info = document.createElement('div');
+      info.className = 'source-file-main';
+      const name = document.createElement('div');
+      name.className = 'source-name';
+      name.textContent = sourceDisplayName(source);
+
+      const meta = document.createElement('div');
+      meta.className = 'source-meta';
+      const metaBase = document.createElement('span');
+      metaBase.className = 'source-meta-base';
+      metaBase.textContent = `${sourceKindLabel(source.kind)} · ${formatBytes(source.size)}`;
+      meta.appendChild(metaBase);
+      const status = sourceStatus(source);
+      if (status) {
+        const statusEl = document.createElement('span');
+        statusEl.className = `source-status ${status.className}`;
+        statusEl.textContent = status.text;
+        meta.appendChild(statusEl);
+      }
+      info.append(name, meta);
+
+      const commands = document.createElement('div');
+      commands.className = 'source-commands';
+
+      const importButton = document.createElement('button');
+      importButton.className = `small-btn source-command${(!source.imported || source.stale) ? ' needed' : ''}`;
+      importButton.type = 'button';
+      importButton.disabled = state.busy;
+      importButton.textContent = source.stale ? '刷新' : (source.imported ? '重导' : '导入');
+      importButton.title = source.stale ? '源文件已变化，刷新工作帧' : (source.imported ? '重新导入这张源图' : '导入这张源图到工作台');
+      importButton.addEventListener('click', evt => {
+        evt.stopPropagation();
+        extractAssets([source.id], source.imported || source.stale).catch(showError);
+      });
+
+      const exportButton = document.createElement('button');
+      exportButton.className = 'small-btn source-command';
+      exportButton.type = 'button';
+      exportButton.disabled = state.busy || Boolean(sourceExportBlocker(source));
+      exportButton.textContent = '导出';
+      exportButton.title = sourceExportBlocker(source) || '只导出这张图片';
+      exportButton.addEventListener('click', evt => {
+        evt.stopPropagation();
+        exportSingleSource(source.id).catch(showError);
+      });
+
+      commands.append(importButton, exportButton);
+      item.append(checkbox, info, commands);
+      return item;
+    }
+
+    function toggleSourceFolder(node) {
+      if (state.sourceCollapsedDirs.has(node.key)) state.sourceCollapsedDirs.delete(node.key);
+      else state.sourceCollapsedDirs.add(node.key);
+      renderSourceFileList();
+    }
+
+    function setSourceTreeActive(node, active) {
+      const next = activeIdsFromWorkspace();
+      for (const id of node.sourceIds) {
+        if (active) next.add(id);
+        else next.delete(id);
+      }
+      updateActiveFiles(next).catch(showError);
+    }
+
+    function renderSourceFolderNode(node, depth, fragment) {
+      const collapsed = state.sourceCollapsedDirs.has(node.key);
+      const row = document.createElement('div');
+      row.className = 'source-tree-row folder';
+      row.style.setProperty('--tree-indent', `${depth * 14}px`);
+      row.title = sourceDirectoryLabel(node.key);
+      row.addEventListener('click', evt => {
+        if (evt.target.closest('button, input')) return;
+        toggleSourceFolder(node);
+      });
+
+      const caret = document.createElement('button');
+      caret.className = 'source-caret';
+      caret.type = 'button';
+      caret.setAttribute('aria-expanded', String(!collapsed));
+      caret.title = collapsed ? '展开目录' : '折叠目录';
+      caret.disabled = state.busy;
+      caret.addEventListener('click', evt => {
+        evt.stopPropagation();
+        toggleSourceFolder(node);
+      });
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'source-tree-check';
+      checkbox.checked = node.sourceCount > 0 && node.activeCount === node.sourceCount;
+      checkbox.indeterminate = node.activeCount > 0 && node.activeCount < node.sourceCount;
+      checkbox.disabled = state.busy || node.sourceCount === 0;
+      checkbox.title = '勾选或取消这个目录下的所有图片';
+      checkbox.addEventListener('click', evt => evt.stopPropagation());
+      checkbox.addEventListener('change', () => {
+        setSourceTreeActive(node, checkbox.checked);
+      });
+
+      const main = document.createElement('div');
+      main.className = 'source-folder-main';
+      const name = document.createElement('div');
+      name.className = 'source-folder-name';
+      name.textContent = node.name;
+      const meta = document.createElement('div');
+      meta.className = 'source-folder-meta';
+      meta.textContent = `${node.sourceCount} 个 · 已导入 ${node.importedCount} · 完成 ${node.completedCount}`;
+      main.append(name, meta);
+
+      const count = document.createElement('div');
+      count.className = 'source-folder-meta';
+      count.textContent = `${node.activeCount}/${node.sourceCount}`;
+
+      row.append(caret, checkbox, main, count);
+      fragment.appendChild(row);
+
+      if (collapsed) return;
+      for (const child of node.dirs) {
+        renderSourceFolderNode(child, depth + 1, fragment);
+      }
+      for (const source of node.sources) {
+        fragment.appendChild(renderSourceFileItem(source, depth + 1));
+      }
     }
 
     function renderSourceFileList() {
-      sourceFileList.innerHTML = '';
       if (!state.workspace?.sourceFiles.length) {
         const empty = document.createElement('div');
         empty.className = 'muted';
-        empty.textContent = '源目录下没有支持的图片文件';
-        sourceFileList.appendChild(empty);
+        empty.textContent = '图片目录下没有支持的图片文件';
+        sourceFileList.replaceChildren(empty);
         return;
       }
 
-      for (const source of state.workspace.sourceFiles) {
-        const item = document.createElement('div');
-        const fileIndex = fileIndexForSource(source.id);
-        const isCurrent = fileIndex >= 0 && fileIndex === state.activeFile;
-        item.className = `source-item${fileIndex >= 0 ? ' selectable' : ''}${isCurrent ? ' current' : ''}`;
-        item.dataset.sourceId = source.id;
-        if (fileIndex >= 0) {
-          item.addEventListener('click', evt => {
-            if (evt.target.closest('button, input')) return;
-            selectFile(fileIndex);
-          });
-        }
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = source.active;
-        checkbox.title = '加入/移出处理列表';
-        checkbox.addEventListener('click', evt => evt.stopPropagation());
-        checkbox.addEventListener('change', () => {
-          const next = activeIdsFromWorkspace();
-          if (checkbox.checked) next.add(source.id);
-          else next.delete(source.id);
-          updateActiveFiles(next).catch(showError);
-        });
-
-        const info = document.createElement('div');
-        const kind = sourceKindLabel(source.kind);
-        const annotated = countAnnotatedFrames(source.id);
-        const completion = fileCompletionLabel(source.id);
-        let progress = '<span class="source-pill warn">未加载</span>';
-        if (source.imported && source.stale) {
-          progress = '<span class="source-pill warn">源图已更新</span>';
-        } else if (source.imported && completion) {
-          progress = `<span class="source-pill done">${completion}</span>`;
-        } else if (source.imported && annotated) {
-          progress = `<span class="source-pill strong">已标 ${annotated}/${source.frameCount}</span>`;
-        } else if (source.imported) {
-          progress = '<span class="source-pill pending">未处理</span>';
-        }
-        const active = source.active
-          ? '<span class="source-pill strong">选中</span>'
-          : '<span class="source-pill">未选</span>';
-        info.innerHTML = `
-          <div class="source-name">${source.name}</div>
-          <div class="source-meta">
-            <span class="source-pill">${kind}</span>
-            <span class="source-pill">${formatBytes(source.size)}</span>
-            ${progress}
-            ${active}
-          </div>
-        `;
-
-        const button = document.createElement('button');
-        button.className = 'small-btn source-command';
-        button.textContent = source.stale ? '更新' : (source.imported ? '重新加载' : '加载');
-        button.title = source.stale ? '源文件已变化，重新读取源文件' : (source.imported ? '重新读取源文件' : '加载到工作台');
-        button.addEventListener('click', evt => {
-          evt.stopPropagation();
-          extractAssets([source.id], source.imported || source.stale).catch(showError);
-        });
-
-        item.appendChild(checkbox);
-        item.appendChild(info);
-        item.appendChild(button);
-        sourceFileList.appendChild(item);
+      const sources = filteredSourceFiles();
+      if (!sources.length) {
+        const empty = document.createElement('div');
+        empty.className = 'muted';
+        empty.textContent = sourceFilterEmptyText();
+        sourceFileList.replaceChildren(empty);
+        return;
       }
+
+      const tree = document.createElement('div');
+      tree.className = 'source-tree';
+      const fragment = document.createDocumentFragment();
+      const root = buildSourceTree(sources);
+      for (const child of root.dirs) {
+        renderSourceFolderNode(child, 0, fragment);
+      }
+      for (const source of root.sources) {
+        fragment.appendChild(renderSourceFileItem(source, 0));
+      }
+      tree.appendChild(fragment);
+      sourceFileList.replaceChildren(tree);
 
       if (state.scrollSourceIntoView) {
         state.scrollSourceIntoView = false;
@@ -2485,7 +3441,10 @@
           item.appendChild(role);
         }
         item.addEventListener('click', evt => {
-          selectRangeShape(shape, { additive: evt.shiftKey });
+          selectRangeShape(shape, {
+            additive: evt.ctrlKey || evt.metaKey,
+            range: evt.shiftKey
+          });
           renderShapeList();
           renderRangeControls();
           draw();
@@ -2564,19 +3523,68 @@
       state.rangeShapeIds = state.rangeShapeIds.filter(id => !deletedKeys.has(id));
       state.selectedId = null;
       state.selectedIds = [];
+      state.selectionAnchorId = null;
       setDirty(true);
       renderShapeList();
       draw();
     }
 
-    function applyWorkspaceAndManifest(workspace, manifest) {
+    function cloneShapeForClipboard(shape) {
+      return {
+        type: shape.type,
+        effect: shape.effect,
+        blockSize: shape.blockSize,
+        points: shape.points.map(point => ({ ...point }))
+      };
+    }
+
+    function copySelectedShapes() {
+      const shapes = selectedFrameShapes();
+      if (!shapes.length) {
+        statusEl.textContent = '没有选中的框';
+        return;
+      }
+      state.shapeClipboard = shapes.map(cloneShapeForClipboard);
+      renderRangeControls();
+      statusEl.textContent = `已复制 ${state.shapeClipboard.length} 个框`;
+    }
+
+    function pasteCopiedShapes() {
+      if (!currentFile()) return;
+      if (!state.shapeClipboard.length) {
+        statusEl.textContent = '没有可粘贴的框';
+        return;
+      }
+      pushHistory(state.shapeClipboard.length > 1 ? '粘贴多个矩形' : '粘贴矩形');
+      markCurrentFileEdited();
+      const pasted = state.shapeClipboard.map(shape => {
+        const id = uid();
+        return {
+          ...shape,
+          id,
+          trackId: id,
+          points: shape.points.map(point => ({ ...point }))
+        };
+      });
+      frameShapes().push(...pasted);
+      selectRangeShapes(pasted, {
+        anchorId: pasted[0]?.id || null,
+        primaryId: pasted[pasted.length - 1]?.id || null
+      });
+      setDirty(true);
+      renderShapeList();
+      renderRangeControls();
+      draw();
+      statusEl.textContent = `已粘贴 ${pasted.length} 个框`;
+    }
+
+    function applyWorkspaceAndManifest(workspace, manifest, options = {}) {
       const currentId = currentFile()?.id;
       state.workspace = workspace;
-      state.files = manifest.files || [];
+      state.files = manifest?.files || manifestFromWorkspace(workspace).files || [];
       sourceDirInput.value = workspace.sourceDir || '';
       outputDirInput.value = workspace.outputDir || '';
       renderDirectoryMeta();
-      renderSourceFileList();
 
       if (!state.files.length) {
         state.activeFile = 0;
@@ -2585,7 +3593,12 @@
         return;
       }
 
-      const nextIndex = state.files.findIndex(file => file.id === currentId);
+      const preferredIndex = options.preferredId
+        ? state.files.findIndex(file => file.id === options.preferredId)
+        : -1;
+      const nextIndex = preferredIndex >= 0
+        ? preferredIndex
+        : state.files.findIndex(file => file.id === currentId);
       state.activeFile = nextIndex >= 0 ? nextIndex : Math.min(state.activeFile, state.files.length - 1);
       renderFileList();
       selectFile(state.activeFile);
@@ -2605,9 +3618,8 @@
       state.drawingPointerId = null;
     }
 
-    function startDrawingAt(point, additive, pointerId = null) {
+    function startDrawingAt(point, pointerId = null) {
       state.drawing = { id: 'draft', type: 'rect', points: [point, point], effect: 'pixelate', blockSize: 14 };
-      state.drawingAdditive = additive;
       state.pendingSelection = null;
       state.resizing = null;
       if (pointerId !== null && pointerId !== undefined) {
@@ -2630,7 +3642,7 @@
         pushHistory('新增矩形');
         markCurrentFileEdited();
         frameShapes().push(shape);
-        selectRangeShape(shape, { additive: state.drawingAdditive });
+        selectRangeShape(shape, { additive: true });
         setDirty(true);
       }
       resetCanvasInteraction();
@@ -2642,7 +3654,10 @@
     function beginResize(handle, evt) {
       const { shape, corner } = handle;
       if (!isShapeSelected(shape)) {
-        selectRangeShape(shape, { additive: evt.shiftKey });
+        selectRangeShape(shape, {
+          additive: evt.ctrlKey || evt.metaKey,
+          range: evt.shiftKey
+        });
       }
       state.resizing = {
         shapeId: shape.id,
@@ -2651,7 +3666,6 @@
         changed: false
       };
       state.drawing = null;
-      state.drawingAdditive = false;
       state.pendingSelection = null;
       state.drawingPointerId = evt.pointerId;
       canvas.setPointerCapture(evt.pointerId);
@@ -2704,13 +3718,18 @@
       }
       const hit = pickShapeAt(p);
       if (hit) {
-        state.pendingSelection = { start: p, hitId: hit.id, additive: evt.shiftKey };
+        state.pendingSelection = {
+          start: p,
+          hitId: hit.id,
+          additive: evt.ctrlKey || evt.metaKey,
+          range: evt.shiftKey
+        };
         state.drawingPointerId = evt.pointerId;
         canvas.setPointerCapture(evt.pointerId);
         evt.preventDefault();
         return;
       }
-      startDrawingAt(p, evt.shiftKey, evt.pointerId);
+      startDrawingAt(p, evt.pointerId);
       evt.preventDefault();
     });
 
@@ -2722,7 +3741,7 @@
       }
       if (state.pendingSelection) {
         if (dragStarted(state.pendingSelection.start, p)) {
-          startDrawingAt(state.pendingSelection.start, state.pendingSelection.additive, evt.pointerId);
+          startDrawingAt(state.pendingSelection.start, evt.pointerId);
           state.drawing.points[1] = p;
           draw();
         }
@@ -2748,7 +3767,10 @@
         state.pendingSelection = null;
         releaseDrawingPointer(evt);
         if (hit) {
-          selectRangeShape(hit, { additive: pending.additive });
+          selectRangeShape(hit, {
+            additive: pending.additive,
+            range: pending.range
+          });
           renderShapeList();
           renderRangeControls();
           draw();
@@ -2790,6 +3812,7 @@
       fileStore().frames[String(state.frame)] = [];
       state.selectedId = null;
       state.selectedIds = [];
+      state.selectionAnchorId = null;
       state.rangeShapeIds = [];
       setDirty(true);
       renderShapeList();
@@ -2830,17 +3853,18 @@
       renderRangeControls();
       draw();
     });
+    addRangeSegmentBtn.addEventListener('click', addCurrentRangeSegment);
+    clearRangeSegmentsBtn.addEventListener('click', clearRangeSegments);
     document.getElementById('setRangeStartBtn').addEventListener('click', () => {
       adoptCurrentFrameShapeIfNeeded();
       setRange(state.frame, state.rangeEnd);
     });
     document.getElementById('setRangeEndBtn').addEventListener('click', () => setRange(state.rangeStart, state.frame));
-    document.getElementById('setWholeRangeBtn').addEventListener('click', () => {
-      const file = currentFile();
-      if (!file) return;
-      setRange(0, file.frameCount - 1);
-    });
+    document.getElementById('setWholeRangeBtn').addEventListener('click', setWholeRangeTarget);
     document.getElementById('applyRangeBtn').addEventListener('click', applyRangeToFrames);
+    removeRangeBtn.addEventListener('click', removeRangeShapesFromFrames);
+    copyShapesBtn.addEventListener('click', copySelectedShapes);
+    pasteShapesBtn.addEventListener('click', pasteCopiedShapes);
     document.getElementById('saveBtn').addEventListener('click', async () => {
       try {
         await saveAnnotations();
@@ -2849,13 +3873,40 @@
       }
     });
     document.getElementById('saveDirBtn').addEventListener('click', () => saveDirectories().catch(showError));
+    document.getElementById('sourceBrowseBtn').addEventListener('click', () => pickDirectory('source').catch(showError));
+    document.getElementById('outputBrowseBtn').addEventListener('click', () => pickDirectory('output').catch(showError));
     document.getElementById('refreshBtn').addEventListener('click', () => boot().catch(showError));
+    sourceFilter.addEventListener('click', evt => {
+      const button = evt.target.closest('button[data-filter]');
+      if (!button) return;
+      state.sourceFilter = button.dataset.filter || 'all';
+      renderSourceFilter();
+      renderSourceFileList();
+    });
+    sourceKindFilter.addEventListener('click', evt => {
+      const button = evt.target.closest('button[data-kind]');
+      if (!button) return;
+      state.sourceKindFilter = button.dataset.kind || 'all';
+      renderSourceFilter();
+      renderSourceFileList();
+    });
+    animatedFormatControl.addEventListener('click', evt => {
+      const button = evt.target.closest('button[data-format]');
+      if (!button) return;
+      state.animatedFormat = button.dataset.format || 'webp';
+      renderSourceFilter();
+      statusEl.textContent = `动图将导出为 ${state.animatedFormat.toUpperCase()}`;
+    });
     selectAllSourcesBtn.addEventListener('click', () => {
       if (!state.workspace?.sourceFiles.length) {
         statusEl.textContent = '没有可选图片';
         return;
       }
-      updateActiveFiles(new Set(state.workspace.sourceFiles.map(source => source.id))).catch(showError);
+      const allActive = state.workspace.sourceFiles.every(source => source.active);
+      updateActiveFiles(allActive
+        ? new Set()
+        : new Set(state.workspace.sourceFiles.map(source => source.id))
+      ).catch(showError);
     });
     document.getElementById('extractSelectedBtn').addEventListener('click', () => {
       const sources = [...activeIdsFromWorkspace()]
@@ -2863,7 +3914,7 @@
         .filter(Boolean);
       const pendingSources = sources.filter(source => !source.imported || source.stale);
       if (!pendingSources.length) {
-        statusEl.textContent = '选中文件都已加载，源文件没有变化';
+        statusEl.textContent = '勾选文件都已导入，源图没有变化';
         return;
       }
       extractAssets(
@@ -2909,6 +3960,18 @@
         return;
       }
       if (evt.target instanceof HTMLInputElement) return;
+      if ((evt.ctrlKey || evt.metaKey) && !evt.shiftKey && evt.key.toLowerCase() === 'c') {
+        if (!hasTextSelection() && selectedFrameShapes().length) {
+          evt.preventDefault();
+          copySelectedShapes();
+        }
+        return;
+      }
+      if ((evt.ctrlKey || evt.metaKey) && !evt.shiftKey && evt.key.toLowerCase() === 'v') {
+        evt.preventDefault();
+        pasteCopiedShapes();
+        return;
+      }
       if (shortcutMatches(evt, 'save')) {
         evt.preventDefault();
         document.getElementById('saveBtn').click();

@@ -1,21 +1,28 @@
 from __future__ import annotations
 
 import json
-import mimetypes
+import os
 import shutil
+import subprocess
 import sys
 import threading
 import time
 import uuid
 from datetime import datetime
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, quote, unquote, urlparse
+from urllib.parse import quote
 
+from bottle import Bottle, HTTPResponse, request, static_file
 from PIL import Image, ImageSequence
 
+SOURCE_ROOT = Path(__file__).resolve().parent.parent
+if str(SOURCE_ROOT) not in sys.path:
+    sys.path.insert(0, str(SOURCE_ROOT))
+
+from app_paths import is_frozen, project_dir, resource_path
+
 ROOT = Path(__file__).resolve().parent
-WORK_DIR = ROOT.parent
+WORK_DIR = project_dir()
 PROJECT_DIR = WORK_DIR
 DATA_DIR = WORK_DIR / "data"
 FRAMES_DIR = DATA_DIR / "frames"
@@ -23,14 +30,27 @@ DEFAULT_SOURCE_DIR = PROJECT_DIR / "inputs"
 DEFAULT_OUTPUT_DIR = PROJECT_DIR / "exports"
 ANNOTATIONS_PATH = DATA_DIR / "annotations.json"
 CONFIG_PATH = DATA_DIR / "config.json"
-INDEX_PATH = ROOT / "index.html"
+INDEX_PATH = resource_path("annotator", "index.html")
 ANIMATED_SOURCE_SUFFIXES = {".gif", ".webp"}
 STATIC_SOURCE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
 SUPPORTED_SOURCE_SUFFIXES = ANIMATED_SOURCE_SUFFIXES | STATIC_SOURCE_SUFFIXES
+DEFAULT_ANIMATED_FORMAT = "webp"
+ANIMATED_OUTPUT_FORMATS = {"webp", "webm"}
 SOURCE_META_FILENAME = "_source.json"
 RENDER_JOBS: dict[str, dict] = {}
 RENDER_JOBS_LOCK = threading.Lock()
 RENDER_JOB_TTL_SECONDS = 60 * 60
+STORAGE_LOCK = threading.RLock()
+
+
+def write_json_atomic(path: Path, data: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        temp_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        temp_path.replace(path)
+    finally:
+        temp_path.unlink(missing_ok=True)
 
 
 def default_config() -> dict:
@@ -43,13 +63,14 @@ def default_config() -> dict:
 
 def load_config() -> dict:
     config = default_config()
-    if CONFIG_PATH.exists():
-        try:
-            raw = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-            if isinstance(raw, dict):
-                config.update(raw)
-        except json.JSONDecodeError:
-            pass
+    with STORAGE_LOCK:
+        if CONFIG_PATH.exists():
+            try:
+                raw = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+                if isinstance(raw, dict):
+                    config.update(raw)
+            except json.JSONDecodeError:
+                pass
 
     active_files = config.get("activeFiles")
     if active_files is None:
@@ -64,8 +85,8 @@ def load_config() -> dict:
 
 
 def save_config(config: dict) -> None:
-    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CONFIG_PATH.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
+    with STORAGE_LOCK:
+        write_json_atomic(CONFIG_PATH, config)
 
 
 def resolve_dir(value: str | Path) -> Path:
@@ -75,13 +96,64 @@ def resolve_dir(value: str | Path) -> Path:
     return path.resolve()
 
 
-def load_annotations() -> dict:
-    if not ANNOTATIONS_PATH.exists():
-        return {"version": 1, "files": {}}
+def normalize_animated_format(value: str | None) -> str:
+    normalized = (value or DEFAULT_ANIMATED_FORMAT).strip().lower()
+    if normalized not in ANIMATED_OUTPUT_FORMATS:
+        raise ValueError(f"animatedFormat must be one of: {', '.join(sorted(ANIMATED_OUTPUT_FORMATS))}")
+    return normalized
+
+
+def picker_initial_dir(value: str | Path) -> Path:
     try:
-        data = json.loads(ANNOTATIONS_PATH.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return {"version": 1, "files": {}}
+        path = resolve_dir(value)
+    except (OSError, RuntimeError, ValueError):
+        return Path.home()
+    if path.is_dir():
+        return path
+    for parent in path.parents:
+        if parent.is_dir():
+            return parent
+    return Path.home()
+
+
+def pick_directory(title: str, initial_dir: str | Path) -> str:
+    script = r'''
+Add-Type -AssemblyName System.Windows.Forms
+$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+$dialog.Description = $env:REMASK_PICKER_TITLE
+$dialog.SelectedPath = $env:REMASK_PICKER_INITIAL_DIR
+$dialog.ShowNewFolderButton = $true
+$result = $dialog.ShowDialog()
+if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    Write-Output $dialog.SelectedPath
+}
+'''
+    env = {
+        **os.environ,
+        "REMASK_PICKER_TITLE": title,
+        "REMASK_PICKER_INITIAL_DIR": str(picker_initial_dir(initial_dir)),
+    }
+    result = subprocess.run(
+        ["powershell.exe", "-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-Command", script],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=env,
+    )
+    return result.stdout.strip()
+
+
+def load_annotations() -> dict:
+    with STORAGE_LOCK:
+        if not ANNOTATIONS_PATH.exists():
+            return {"version": 1, "files": {}}
+        try:
+            data = json.loads(ANNOTATIONS_PATH.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return {"version": 1, "files": {}}
     data.setdefault("version", 1)
     data.setdefault("files", {})
     return data
@@ -90,8 +162,8 @@ def load_annotations() -> dict:
 def save_annotations(data: dict) -> None:
     data.setdefault("version", 1)
     data.setdefault("files", {})
-    ANNOTATIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    ANNOTATIONS_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    with STORAGE_LOCK:
+        write_json_atomic(ANNOTATIONS_PATH, data)
 
 
 def source_files(source_dir: Path) -> list[Path]:
@@ -226,6 +298,16 @@ def source_kind(path: Path) -> str:
     return "static"
 
 
+def cached_source_kind(asset_id: str, path: Path) -> str:
+    meta = read_source_meta(asset_id)
+    kind = meta.get("kind")
+    if kind in {"animated", "static", "unreadable"}:
+        signature = source_signature(path)
+        if all(meta.get(key) == signature[key] for key in ("path", "size", "mtimeNs")):
+            return kind
+    return source_kind(path)
+
+
 def frame_count(asset_id: str) -> int:
     frame_dir = FRAMES_DIR / asset_id
     if not frame_dir.is_dir():
@@ -251,7 +333,7 @@ def source_record(
     relative_name = relative_source_name(path, source_dir)
     frames = frame_count(asset_id)
     stat = path.stat()
-    kind = source_kind(path)
+    kind = cached_source_kind(asset_id, path)
     stale = frame_source_stale(asset_id, path)
     return {
         "id": asset_id,
@@ -291,7 +373,7 @@ def frame_record(
         "name": asset_id,
         "sourceName": source_name,
         "baseName": source.name if source else "",
-        "kind": source_kind(source) if source else "unknown",
+        "kind": cached_source_kind(asset_id, source) if source else "unknown",
         "missingSource": source is None,
         "sourceStale": frame_source_stale(asset_id, source),
         "frameCount": len(frame_files),
@@ -332,8 +414,7 @@ def build_workspace() -> dict:
     }
 
 
-def build_manifest() -> dict:
-    workspace = build_workspace()
+def manifest_from_workspace(workspace: dict) -> dict:
     active_files_configured = bool(workspace["activeFilesConfigured"])
     active_files = set(workspace["activeFiles"] or [])
     files = []
@@ -354,6 +435,10 @@ def build_manifest() -> dict:
     return {"files": files, "annotationsPath": str(ANNOTATIONS_PATH)}
 
 
+def build_manifest() -> dict:
+    return manifest_from_workspace(build_workspace())
+
+
 def safe_frame_path(asset: str, filename: str) -> Path | None:
     candidate = (FRAMES_DIR / asset / filename).resolve()
     try:
@@ -365,12 +450,17 @@ def safe_frame_path(asset: str, filename: str) -> Path | None:
     return None
 
 
-def read_request_json(handler: BaseHTTPRequestHandler) -> dict:
-    length = int(handler.headers.get("Content-Length", "0"))
-    raw = handler.rfile.read(length)
+def request_json() -> dict:
+    raw = request.body.read()
     if not raw:
         return {}
-    return json.loads(raw.decode("utf-8"))
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(str(exc)) from exc
+    if not isinstance(data, dict):
+        raise ValueError("request body must be a JSON object")
+    return data
 
 
 def find_source(asset_id: str, source_dir: Path) -> Path | None:
@@ -431,8 +521,14 @@ def update_active_files(imported_ids: list[str]) -> None:
     save_config(config)
 
 
-def render_assets(asset_ids: list[str], suffix: str, max_bytes: int | None, output_root: Path) -> list[dict]:
-    if str(WORK_DIR) not in sys.path:
+def render_assets(
+    asset_ids: list[str],
+    suffix: str,
+    max_bytes: int | None,
+    output_root: Path,
+    animated_format: str,
+) -> list[dict]:
+    if not is_frozen() and str(WORK_DIR) not in sys.path:
         sys.path.insert(0, str(WORK_DIR))
     import apply_thick_mosaic  # noqa: PLC0415
 
@@ -447,6 +543,7 @@ def render_assets(asset_ids: list[str], suffix: str, max_bytes: int | None, outp
                 suffix=suffix,
                 max_bytes=max_bytes,
                 output_root=output_root,
+                animated_format=animated_format,
             )
         except Exception as exc:  # noqa: BLE001
             results.append({"id": asset_id, "status": "error", "error": str(exc)})
@@ -483,8 +580,15 @@ def render_job_snapshot(job_id: str) -> dict | None:
         return json.loads(json.dumps(job, ensure_ascii=False)) if job else None
 
 
-def run_render_job(job_id: str, asset_ids: list[str], suffix: str, max_bytes: int | None, output_root: Path) -> None:
-    if str(WORK_DIR) not in sys.path:
+def run_render_job(
+    job_id: str,
+    asset_ids: list[str],
+    suffix: str,
+    max_bytes: int | None,
+    output_root: Path,
+    animated_format: str,
+) -> None:
+    if not is_frozen() and str(WORK_DIR) not in sys.path:
         sys.path.insert(0, str(WORK_DIR))
     import apply_thick_mosaic  # noqa: PLC0415
 
@@ -498,6 +602,7 @@ def run_render_job(job_id: str, asset_ids: list[str], suffix: str, max_bytes: in
         total=len(asset_ids),
         done=0,
         outputDir=str(output_root),
+        animatedFormat=animated_format,
     )
     try:
         for index, asset_id in enumerate(asset_ids):
@@ -509,6 +614,7 @@ def run_render_job(job_id: str, asset_ids: list[str], suffix: str, max_bytes: in
                     suffix=suffix,
                     max_bytes=max_bytes,
                     output_root=output_root,
+                    animated_format=animated_format,
                 )
             except Exception as exc:  # noqa: BLE001
                 report = {"id": asset_id, "status": "error", "error": str(exc)}
@@ -530,7 +636,13 @@ def run_render_job(job_id: str, asset_ids: list[str], suffix: str, max_bytes: in
     )
 
 
-def start_render_job(asset_ids: list[str], suffix: str, max_bytes: int | None, output_root: Path) -> dict:
+def start_render_job(
+    asset_ids: list[str],
+    suffix: str,
+    max_bytes: int | None,
+    output_root: Path,
+    animated_format: str,
+) -> dict:
     cleanup_render_jobs()
     job_id = uuid.uuid4().hex
     now = time.time()
@@ -543,217 +655,253 @@ def start_render_job(asset_ids: list[str], suffix: str, max_bytes: int | None, o
             "current": None,
             "results": [],
             "outputDir": str(output_root),
+            "animatedFormat": animated_format,
             "createdAt": now,
             "updatedAt": now,
         }
     thread = threading.Thread(
         target=run_render_job,
-        args=(job_id, asset_ids, suffix, max_bytes, output_root),
+        args=(job_id, asset_ids, suffix, max_bytes, output_root, animated_format),
         daemon=True,
     )
     thread.start()
     return render_job_snapshot(job_id) or {"id": job_id, "status": "queued"}
 
 
-class Handler(BaseHTTPRequestHandler):
-    def _send_json(self, status: int, data: dict) -> None:
-        body = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        self.wfile.write(body)
+def parse_render_request(data: dict) -> tuple[tuple[list[str], str, int | None, str] | None, dict]:
+    asset_ids = data.get("assetIds")
+    if not isinstance(asset_ids, list) or not asset_ids:
+        return None, {"ok": False, "error": "assetIds must be a non-empty list"}
 
-    def _send_file(self, path: Path) -> None:
-        mime = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-        body = path.read_bytes()
-        self.send_response(200)
-        self.send_header("Content-Type", mime)
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        self.wfile.write(body)
+    suffix = str(data.get("suffix") or "")
+    max_bytes_raw = data.get("maxBytes", 1024 * 1024)
+    try:
+        max_bytes = None if max_bytes_raw is None or max_bytes_raw in (0, "0", "") else int(max_bytes_raw)
+    except (TypeError, ValueError):
+        return None, {"ok": False, "error": "maxBytes must be a number"}
+    try:
+        animated_format = normalize_animated_format(str(data.get("animatedFormat") or DEFAULT_ANIMATED_FORMAT))
+    except ValueError as exc:
+        return None, {"ok": False, "error": str(exc)}
 
-    def do_GET(self) -> None:  # noqa: N802
-        parsed = urlparse(self.path)
-        path = unquote(parsed.path)
-        if path in {"/", "/index.html"}:
-            self._send_file(INDEX_PATH)
-            return
-        if path == "/api/manifest":
-            self._send_json(200, build_manifest())
-            return
-        if path == "/api/workspace":
-            self._send_json(200, build_workspace())
-            return
-        if path == "/api/annotations":
-            self._send_json(200, load_annotations())
-            return
-        if path == "/api/render/status":
-            query = parse_qs(parsed.query)
-            job_id = (query.get("jobId") or [""])[0]
-            if not job_id:
-                self._send_json(400, {"ok": False, "error": "jobId is required"})
-                return
-            job = render_job_snapshot(job_id)
-            if not job:
-                self._send_json(404, {"ok": False, "error": "render job not found"})
-                return
-            self._send_json(200, {"ok": True, "job": job})
-            return
-        if path.startswith("/frame/"):
-            rel = path[len("/frame/") :]
-            if "/" in rel:
-                asset, filename = rel.rsplit("/", 1)
-                frame_path = safe_frame_path(asset, filename)
-                if frame_path:
-                    self._send_file(frame_path)
-                    return
-        self.send_error(404)
+    return ([str(item) for item in asset_ids], suffix, max_bytes, animated_format), {}
 
-    def do_POST(self) -> None:  # noqa: N802
-        path = urlparse(self.path).path
-        if path == "/api/annotations":
-            try:
-                data = read_request_json(self)
-            except json.JSONDecodeError as exc:
-                self._send_json(400, {"ok": False, "error": str(exc)})
-                return
-            save_annotations(data)
-            self._send_json(200, {"ok": True, "path": str(ANNOTATIONS_PATH)})
-            return
 
-        if path == "/api/config":
-            try:
-                data = read_request_json(self)
-            except json.JSONDecodeError as exc:
-                self._send_json(400, {"ok": False, "error": str(exc)})
-                return
+def json_response(data: dict, status: int = 200) -> HTTPResponse:
+    return HTTPResponse(
+        body=json.dumps(data, ensure_ascii=False, indent=2),
+        status=status,
+        headers={
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "no-store",
+        },
+    )
 
-            config = load_config()
-            if "sourceDir" in data:
-                source_dir = resolve_dir(data["sourceDir"])
-                if not source_dir.is_dir():
-                    self._send_json(400, {"ok": False, "error": f"Source directory not found: {source_dir}"})
-                    return
-                previous_source_dir = resolve_dir(config.get("sourceDir") or DEFAULT_SOURCE_DIR)
-                config["sourceDir"] = str(source_dir)
-                if "activeFiles" not in data and source_dir != previous_source_dir:
-                    config["activeFiles"] = [
-                        asset_id_for_source(source, source_dir)
+
+def file_response(path: Path):
+    result = static_file(path.name, root=str(path.parent))
+    result.set_header("Cache-Control", "no-store")
+    return result
+
+
+def create_app() -> Bottle:
+    app = Bottle()
+
+    @app.get("/")
+    @app.get("/index.html")
+    def index():
+        return file_response(INDEX_PATH)
+
+    @app.get("/api/manifest")
+    def api_manifest():
+        return json_response(build_manifest())
+
+    @app.get("/api/workspace")
+    def api_workspace():
+        return json_response(build_workspace())
+
+    @app.get("/api/annotations")
+    def api_annotations():
+        return json_response(load_annotations())
+
+    @app.get("/api/render/status")
+    def api_render_status():
+        job_id = request.query.get("jobId", "")
+        if not job_id:
+            return json_response({"ok": False, "error": "jobId is required"}, 400)
+        job = render_job_snapshot(job_id)
+        if not job:
+            return json_response({"ok": False, "error": "render job not found"}, 404)
+        return json_response({"ok": True, "job": job})
+
+    @app.get("/frame/<rel:path>")
+    def frame(rel: str):
+        if "/" not in rel:
+            return json_response({"ok": False, "error": "frame path is invalid"}, 404)
+        asset, filename = rel.rsplit("/", 1)
+        frame_path = safe_frame_path(asset, filename)
+        if not frame_path:
+            return json_response({"ok": False, "error": "frame not found"}, 404)
+        return file_response(frame_path)
+
+    @app.post("/api/annotations")
+    def save_annotations_api():
+        try:
+            data = request_json()
+        except ValueError as exc:
+            return json_response({"ok": False, "error": str(exc)}, 400)
+        save_annotations(data)
+        return json_response({"ok": True, "path": str(ANNOTATIONS_PATH)})
+
+    @app.post("/api/select-directory")
+    def select_directory_api():
+        try:
+            data = request_json()
+        except ValueError as exc:
+            return json_response({"ok": False, "error": str(exc)}, 400)
+
+        config = load_config()
+        kind = str(data.get("kind") or "source")
+        if kind == "output":
+            title = "选择导出目录"
+            fallback_dir = config.get("outputDir") or DEFAULT_OUTPUT_DIR
+        else:
+            title = "选择图片目录"
+            fallback_dir = config.get("sourceDir") or DEFAULT_SOURCE_DIR
+        current_dir = str(data.get("currentDir") or fallback_dir)
+        try:
+            selected = pick_directory(title, current_dir)
+        except Exception as exc:  # noqa: BLE001
+            return json_response({"ok": False, "error": f"Directory picker failed: {exc}"}, 500)
+        return json_response({"ok": True, "path": selected})
+
+    @app.post("/api/config")
+    def config_api():
+        try:
+            data = request_json()
+        except ValueError as exc:
+            return json_response({"ok": False, "error": str(exc)}, 400)
+
+        config = load_config()
+        active_only = (
+            bool(data.get("activeOnly"))
+            and "activeFiles" in data
+            and "sourceDir" not in data
+            and "outputDir" not in data
+        )
+        if "sourceDir" in data:
+            source_dir = resolve_dir(data["sourceDir"])
+            if not source_dir.is_dir():
+                return json_response({"ok": False, "error": f"Source directory not found: {source_dir}"}, 400)
+            previous_source_dir = resolve_dir(config.get("sourceDir") or DEFAULT_SOURCE_DIR)
+            config["sourceDir"] = str(source_dir)
+            if "activeFiles" not in data and source_dir != previous_source_dir:
+                config["activeFiles"] = [
+                    asset_id_for_source(source, source_dir)
                     for source in source_files(source_dir)
                 ]
-            if "outputDir" in data:
-                output_dir = resolve_dir(str(data["outputDir"]).strip() or DEFAULT_OUTPUT_DIR)
-                if output_dir.exists() and not output_dir.is_dir():
-                    self._send_json(400, {"ok": False, "error": f"Output path is not a directory: {output_dir}"})
-                    return
-                try:
-                    output_dir.mkdir(parents=True, exist_ok=True)
-                except OSError as exc:
-                    self._send_json(400, {"ok": False, "error": f"Cannot create output directory: {exc}"})
-                    return
-                config["outputDir"] = str(output_dir)
-            if "activeFiles" in data:
-                active_files = data["activeFiles"]
-                if not isinstance(active_files, list):
-                    self._send_json(400, {"ok": False, "error": "activeFiles must be a list"})
-                    return
-                config["activeFiles"] = sorted({str(item) for item in active_files if str(item).strip()})
-            save_config(config)
-            self._send_json(200, {"ok": True, "workspace": build_workspace(), "manifest": build_manifest()})
-            return
-
-        if path == "/api/extract":
+        if "outputDir" in data:
+            output_dir = resolve_dir(str(data["outputDir"]).strip() or DEFAULT_OUTPUT_DIR)
+            if output_dir.exists() and not output_dir.is_dir():
+                return json_response({"ok": False, "error": f"Output path is not a directory: {output_dir}"}, 400)
             try:
-                data = read_request_json(self)
-            except json.JSONDecodeError as exc:
-                self._send_json(400, {"ok": False, "error": str(exc)})
-                return
+                output_dir.mkdir(parents=True, exist_ok=True)
+            except OSError as exc:
+                return json_response({"ok": False, "error": f"Cannot create output directory: {exc}"}, 400)
+            config["outputDir"] = str(output_dir)
+        if "activeFiles" in data:
+            active_files = data["activeFiles"]
+            if not isinstance(active_files, list):
+                return json_response({"ok": False, "error": "activeFiles must be a list"}, 400)
+            config["activeFiles"] = sorted({str(item) for item in active_files if str(item).strip()})
+        save_config(config)
+        if active_only:
+            return json_response(
+                {
+                    "ok": True,
+                    "activeFiles": config.get("activeFiles") or [],
+                    "activeFilesConfigured": config.get("activeFiles") is not None,
+                }
+            )
+        workspace = build_workspace()
+        return json_response({"ok": True, "workspace": workspace, "manifest": manifest_from_workspace(workspace)})
 
-            asset_ids = data.get("assetIds")
-            if not isinstance(asset_ids, list) or not asset_ids:
-                self._send_json(400, {"ok": False, "error": "assetIds must be a non-empty list"})
-                return
-            source_dir = resolve_dir(load_config()["sourceDir"])
-            overwrite = bool(data.get("overwrite", False))
-            results = []
-            imported_ids = []
-            for asset_id in [str(item) for item in asset_ids]:
-                source = find_source(asset_id, source_dir)
-                if not source:
-                    results.append({"id": asset_id, "status": "missing_source"})
-                    continue
-                try:
-                    result = extract_frames(source, source_dir, overwrite)
-                except Exception as exc:  # noqa: BLE001
-                    results.append({"id": asset_id, "status": "error", "error": str(exc)})
-                    continue
-                results.append(result)
-                if result["status"] in {"imported", "skipped"}:
-                    imported_ids.append(asset_id)
-            update_active_files(imported_ids)
-            self._send_json(200, {"ok": True, "results": results, "workspace": build_workspace(), "manifest": build_manifest()})
-            return
+    @app.post("/api/extract")
+    def extract_api():
+        try:
+            data = request_json()
+        except ValueError as exc:
+            return json_response({"ok": False, "error": str(exc)}, 400)
 
-        if path == "/api/render":
+        asset_ids = data.get("assetIds")
+        if not isinstance(asset_ids, list) or not asset_ids:
+            return json_response({"ok": False, "error": "assetIds must be a non-empty list"}, 400)
+        source_dir = resolve_dir(load_config()["sourceDir"])
+        overwrite = bool(data.get("overwrite", False))
+        results = []
+        imported_ids = []
+        for asset_id in [str(item) for item in asset_ids]:
+            source = find_source(asset_id, source_dir)
+            if not source:
+                results.append({"id": asset_id, "status": "missing_source"})
+                continue
             try:
-                data = read_request_json(self)
-            except json.JSONDecodeError as exc:
-                self._send_json(400, {"ok": False, "error": str(exc)})
-                return
+                result = extract_frames(source, source_dir, overwrite)
+            except Exception as exc:  # noqa: BLE001
+                results.append({"id": asset_id, "status": "error", "error": str(exc)})
+                continue
+            results.append(result)
+            if result["status"] in {"imported", "skipped"}:
+                imported_ids.append(asset_id)
+        update_active_files(imported_ids)
+        workspace = build_workspace()
+        return json_response(
+            {"ok": True, "results": results, "workspace": workspace, "manifest": manifest_from_workspace(workspace)}
+        )
 
-            asset_ids = data.get("assetIds")
-            if not isinstance(asset_ids, list) or not asset_ids:
-                self._send_json(400, {"ok": False, "error": "assetIds must be a non-empty list"})
-                return
+    @app.post("/api/render")
+    def render_api():
+        try:
+            data = request_json()
+        except ValueError as exc:
+            return json_response({"ok": False, "error": str(exc)}, 400)
 
-            suffix = str(data.get("suffix") or "")
-            max_bytes_raw = data.get("maxBytes", 1024 * 1024)
-            try:
-                max_bytes = None if max_bytes_raw is None or max_bytes_raw in (0, "0", "") else int(max_bytes_raw)
-            except (TypeError, ValueError):
-                self._send_json(400, {"ok": False, "error": "maxBytes must be a number"})
-                return
+        parsed, error = parse_render_request(data)
+        if not parsed:
+            return json_response(error, 400)
+        asset_ids, suffix, max_bytes, animated_format = parsed
+        output_root = create_export_output_dir()
+        results = render_assets(asset_ids, suffix, max_bytes, output_root, animated_format)
+        return json_response({"ok": True, "results": results, "outputDir": str(output_root)})
 
-            output_root = create_export_output_dir()
-            results = render_assets([str(item) for item in asset_ids], suffix, max_bytes, output_root)
-            self._send_json(200, {"ok": True, "results": results, "outputDir": str(output_root)})
-            return
+    @app.post("/api/render/start")
+    def render_start_api():
+        try:
+            data = request_json()
+        except ValueError as exc:
+            return json_response({"ok": False, "error": str(exc)}, 400)
 
-        if path == "/api/render/start":
-            try:
-                data = read_request_json(self)
-            except json.JSONDecodeError as exc:
-                self._send_json(400, {"ok": False, "error": str(exc)})
-                return
+        parsed, error = parse_render_request(data)
+        if not parsed:
+            return json_response(error, 400)
+        asset_ids, suffix, max_bytes, animated_format = parsed
+        output_root = create_export_output_dir()
+        job = start_render_job(asset_ids, suffix, max_bytes, output_root, animated_format)
+        return json_response({"ok": True, "jobId": job["id"], "job": job})
 
-            asset_ids = data.get("assetIds")
-            if not isinstance(asset_ids, list) or not asset_ids:
-                self._send_json(400, {"ok": False, "error": "assetIds must be a non-empty list"})
-                return
+    return app
 
-            suffix = str(data.get("suffix") or "")
-            max_bytes_raw = data.get("maxBytes", 1024 * 1024)
-            try:
-                max_bytes = None if max_bytes_raw is None or max_bytes_raw in (0, "0", "") else int(max_bytes_raw)
-            except (TypeError, ValueError):
-                self._send_json(400, {"ok": False, "error": "maxBytes must be a number"})
-                return
 
-            output_root = create_export_output_dir()
-            job = start_render_job([str(item) for item in asset_ids], suffix, max_bytes, output_root)
-            self._send_json(200, {"ok": True, "jobId": job["id"], "job": job})
-            return
-
-        self.send_error(404)
-
-    def log_message(self, fmt: str, *args) -> None:
-        print("%s - %s" % (self.address_string(), fmt % args))
+def run_server(host: str = "127.0.0.1", port: int = 8788) -> None:
+    app = create_app()
+    print(f"Annotator listening on http://{host}:{port}")
+    try:
+        from waitress import serve
+    except ImportError:
+        app.run(host=host, port=port, server="wsgiref", quiet=True)
+        return
+    serve(app, host=host, port=port, threads=8)
 
 
 if __name__ == "__main__":
-    server = ThreadingHTTPServer(("127.0.0.1", 8788), Handler)
-    print("Annotator listening on http://127.0.0.1:8788")
-    server.serve_forever()
+    run_server()

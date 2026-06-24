@@ -1,0 +1,4 @@
+bottle>=0.13,<1
+Pillow>=10
+pyinstaller>=6.0
+waitress>=3.0,<4

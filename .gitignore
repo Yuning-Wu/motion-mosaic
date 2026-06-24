@@ -4,3 +4,6 @@ inputs/
 legacy/
 __pycache__/
 *.pyc
+build/
+dist/
+RemaskAnnotator.exe
