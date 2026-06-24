@@ -12,8 +12,8 @@ from shutil import which
 from app_paths import project_dir
 from annotator.server import run_server
 
-HOST = os.environ.get("REMASK_ANNOTATOR_HOST", "127.0.0.1")
-PORT = int(os.environ.get("REMASK_ANNOTATOR_PORT", "8788"))
+HOST = os.environ.get("MOTION_MOSAIC_HOST") or os.environ.get("REMASK_ANNOTATOR_HOST", "127.0.0.1")
+PORT = int(os.environ.get("MOTION_MOSAIC_PORT") or os.environ.get("REMASK_ANNOTATOR_PORT", "8788"))
 URL = f"http://{HOST}:{PORT}/"
 
 
@@ -35,7 +35,7 @@ def wait_for_service(timeout_seconds: float = 20.0) -> None:
 
 
 def open_app_window() -> None:
-    if os.environ.get("REMASK_ANNOTATOR_OPEN_BROWSER") == "1":
+    if os.environ.get("MOTION_MOSAIC_OPEN_BROWSER") == "1" or os.environ.get("REMASK_ANNOTATOR_OPEN_BROWSER") == "1":
         webbrowser.open(URL)
         return
 
@@ -69,7 +69,7 @@ def find_edge() -> Path | None:
         return Path(found)
 
     candidates = [
-        os.environ.get("REMASK_ANNOTATOR_EDGE"),
+        os.environ.get("MOTION_MOSAIC_EDGE") or os.environ.get("REMASK_ANNOTATOR_EDGE"),
         r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
         r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
         str(Path.home() / r"AppData\Local\Microsoft\Edge\Application\msedge.exe"),
@@ -90,7 +90,7 @@ def keep_running() -> None:
 
 def main() -> None:
     os.chdir(project_dir())
-    if os.environ.get("REMASK_ANNOTATOR_SERVER_ONLY") == "1":
+    if os.environ.get("MOTION_MOSAIC_SERVER_ONLY") == "1" or os.environ.get("REMASK_ANNOTATOR_SERVER_ONLY") == "1":
         run_server(HOST, PORT)
         return
 
@@ -98,7 +98,7 @@ def main() -> None:
         threading.Thread(target=run_server, args=(HOST, PORT), daemon=True).start()
         wait_for_service()
 
-    if os.environ.get("REMASK_ANNOTATOR_NO_WINDOW") != "1":
+    if os.environ.get("MOTION_MOSAIC_NO_WINDOW") != "1" and os.environ.get("REMASK_ANNOTATOR_NO_WINDOW") != "1":
         open_app_window()
 
 

@@ -10,7 +10,7 @@ def is_frozen() -> bool:
 
 
 def project_dir() -> Path:
-    override = os.environ.get("REMASK_ANNOTATOR_HOME")
+    override = os.environ.get("MOTION_MOSAIC_HOME") or os.environ.get("REMASK_ANNOTATOR_HOME")
     if override:
         return Path(override).expanduser().resolve()
     if is_frozen():

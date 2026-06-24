@@ -1,24 +1,26 @@
-# Remask Annotator
+# Motion Mosaic
 
-Remask Annotator is a local annotation and mosaic export tool for images and short animated assets. It runs as a lightweight local web service and can also open the same UI in an app-style desktop window.
+Motion Mosaic is a local mosaic annotation and export tool for static images and animated GIF/WebP assets. It lets you mark mosaic rectangles once, preview them frame by frame, and export compact WebP, AVIF, or WebM outputs.
 
 ## Features
 
-- Annotate mosaic rectangles on static images and animated GIF/WebP sources.
+- Annotate mosaic rectangles on static images and animated sources.
+- Review animated assets frame by frame.
 - Export static images as WebP.
 - Export animated assets as AVIF by default, with WebP and WebM also available.
-- Keep annotations, config, extracted frames, and exports in local folders.
-- Run as a normal browser app, an app-style Edge window, or a single Windows executable.
+- Run in a browser, an app-style Edge window, or a Windows executable.
+- Keep all annotations, extracted frames, and exports local.
 
 ## Architecture
 
-The project intentionally keeps a small Python stack:
+The project keeps a small Python stack:
 
 - `annotator/index.html` contains the browser-based annotation UI.
-- `annotator/server.py` exposes the local HTTP API with Bottle and serves the UI/files.
+- `annotator/server.py` exposes the local HTTP API with Bottle and serves UI assets.
 - `apply_thick_mosaic.py` applies mosaic masks and handles WebP/AVIF/WebM export.
-- `launch_remask_annotator.py` starts the local service and opens an app-style Edge window.
+- `launch_motion_mosaic.py` starts the local service and opens an app-style Edge window.
 - `app_paths.py` resolves runtime paths for source and packaged execution.
+- `assets/` stores the app icon and favicon.
 - `build_exe.ps1` builds a Windows executable with PyInstaller.
 
 Runtime data is kept out of Git:
@@ -57,7 +59,7 @@ http://127.0.0.1:8788/
 Start the app-style desktop window:
 
 ```powershell
-python .\launch_remask_annotator.py
+python .\launch_motion_mosaic.py
 ```
 
 The same web UI remains available at `http://127.0.0.1:8788/`.
@@ -73,7 +75,7 @@ Build the executable:
 Run it:
 
 ```powershell
-.\RemaskAnnotator.exe
+.\MotionMosaic.exe
 ```
 
 The executable starts the local service and opens the app-style window. It keeps `data/`, `exports/`, and `inputs/` next to the executable.
@@ -82,14 +84,16 @@ The executable starts the local service and opens the app-style window. It keeps
 
 Optional environment variables:
 
-- `REMASK_ANNOTATOR_HOME` changes the runtime data root.
-- `REMASK_ANNOTATOR_HOST` changes the server host, default `127.0.0.1`.
-- `REMASK_ANNOTATOR_PORT` changes the server port, default `8788`.
-- `REMASK_ANNOTATOR_SERVER_ONLY=1` starts only the server.
-- `REMASK_ANNOTATOR_OPEN_BROWSER=1` opens the default browser instead of the Edge app window.
-- `REMASK_ANNOTATOR_NO_WINDOW=1` starts without opening a window.
-- `REMASK_ANNOTATOR_EDGE` sets a custom Edge executable path.
+- `MOTION_MOSAIC_HOME` changes the runtime data root.
+- `MOTION_MOSAIC_HOST` changes the server host, default `127.0.0.1`.
+- `MOTION_MOSAIC_PORT` changes the server port, default `8788`.
+- `MOTION_MOSAIC_SERVER_ONLY=1` starts only the server.
+- `MOTION_MOSAIC_OPEN_BROWSER=1` opens the default browser instead of the Edge app window.
+- `MOTION_MOSAIC_NO_WINDOW=1` starts without opening a window.
+- `MOTION_MOSAIC_EDGE` sets a custom Edge executable path.
+
+The previous `REMASK_ANNOTATOR_*` variables are still accepted for local compatibility.
 
 ## Distribution
 
-Generated files such as `RemaskAnnotator.exe`, `build/`, `data/`, and `exports/` are ignored by Git. Keep source code and build scripts in the repository, then publish executable builds through GitHub Releases or CI artifacts.
+Generated files such as `MotionMosaic.exe`, `build/`, `data/`, and `exports/` are ignored by Git. Keep source code and build scripts in the repository, then publish executable builds through GitHub Releases or CI artifacts.

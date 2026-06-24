@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Remask Annotator</title>
+  <title>Motion Mosaic</title>
+  <link rel="icon" type="image/png" href="/assets/motion-mosaic-icon.png">
   <style>
     :root {
       color-scheme: light;
@@ -1419,7 +1420,8 @@
     const resetShortcutsBtn = document.getElementById('resetShortcutsBtn');
     const HISTORY_LIMIT = 40;
     const AUTO_SAVE_DELAY = 300;
-    const SHORTCUT_STORAGE_KEY = 'remaskShortcuts.v1';
+    const SHORTCUT_STORAGE_KEY = 'motionMosaicShortcuts.v1';
+    const LEGACY_SHORTCUT_STORAGE_KEY = 'remaskShortcuts.v1';
     const SHORTCUT_ITEMS = [
       ['prevFrame', '上一帧'],
       ['nextFrame', '下一帧'],
@@ -1498,7 +1500,11 @@
 
     function loadShortcuts() {
       try {
-        const stored = JSON.parse(localStorage.getItem(SHORTCUT_STORAGE_KEY) || '{}');
+        const stored = JSON.parse(
+          localStorage.getItem(SHORTCUT_STORAGE_KEY) ||
+          localStorage.getItem(LEGACY_SHORTCUT_STORAGE_KEY) ||
+          '{}'
+        );
         state.shortcuts = { ...DEFAULT_SHORTCUTS };
         for (const [action] of SHORTCUT_ITEMS) {
           if (typeof stored[action] === 'string') state.shortcuts[action] = stored[action];

@@ -31,6 +31,7 @@ DEFAULT_OUTPUT_DIR = PROJECT_DIR / "exports"
 ANNOTATIONS_PATH = DATA_DIR / "annotations.json"
 CONFIG_PATH = DATA_DIR / "config.json"
 INDEX_PATH = resource_path("annotator", "index.html")
+ASSETS_DIR = resource_path("assets")
 ANIMATED_SOURCE_SUFFIXES = {".gif", ".webp"}
 STATIC_SOURCE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
 SUPPORTED_SOURCE_SUFFIXES = ANIMATED_SOURCE_SUFFIXES | STATIC_SOURCE_SUFFIXES
@@ -120,8 +121,8 @@ def pick_directory(title: str, initial_dir: str | Path) -> str:
     script = r'''
 Add-Type -AssemblyName System.Windows.Forms
 $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-$dialog.Description = $env:REMASK_PICKER_TITLE
-$dialog.SelectedPath = $env:REMASK_PICKER_INITIAL_DIR
+$dialog.Description = $env:MOTION_MOSAIC_PICKER_TITLE
+$dialog.SelectedPath = $env:MOTION_MOSAIC_PICKER_INITIAL_DIR
 $dialog.ShowNewFolderButton = $true
 $result = $dialog.ShowDialog()
 if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
@@ -131,8 +132,8 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
 '''
     env = {
         **os.environ,
-        "REMASK_PICKER_TITLE": title,
-        "REMASK_PICKER_INITIAL_DIR": str(picker_initial_dir(initial_dir)),
+        "MOTION_MOSAIC_PICKER_TITLE": title,
+        "MOTION_MOSAIC_PICKER_INITIAL_DIR": str(picker_initial_dir(initial_dir)),
     }
     result = subprocess.run(
         ["powershell.exe", "-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-Command", script],
@@ -744,6 +745,17 @@ def create_app() -> Bottle:
             return json_response({"ok": False, "error": "frame not found"}, 404)
         return file_response(frame_path)
 
+    @app.get("/assets/<rel:path>")
+    def asset(rel: str):
+        target = (ASSETS_DIR / rel).resolve()
+        try:
+            target.relative_to(ASSETS_DIR.resolve())
+        except ValueError:
+            return json_response({"ok": False, "error": "asset path is invalid"}, 404)
+        if not target.is_file():
+            return json_response({"ok": False, "error": "asset not found"}, 404)
+        return file_response(target)
+
     @app.post("/api/annotations")
     def save_annotations_api():
         try:
@@ -894,7 +906,7 @@ def create_app() -> Bottle:
 
 def run_server(host: str = "127.0.0.1", port: int = 8788) -> None:
     app = create_app()
-    print(f"Annotator listening on http://{host}:{port}")
+    print(f"Motion Mosaic listening on http://{host}:{port}")
     try:
         from waitress import serve
     except ImportError:

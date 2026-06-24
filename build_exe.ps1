@@ -10,16 +10,21 @@ if (-not $SkipInstall) {
     python -m pip install -r "$Root\requirements.txt"
 }
 
+Remove-Item -LiteralPath "$Root\RemaskAnnotator.exe" -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath "$Root\MotionMosaic.exe" -Force -ErrorAction SilentlyContinue
+
 python -m PyInstaller `
     --noconfirm `
     --clean `
-    --name RemaskAnnotator `
+    --name MotionMosaic `
     --onefile `
     --windowed `
+    --icon "$Root\assets\motion-mosaic.ico" `
     --distpath "$Root" `
     --workpath "$Root\build\pyinstaller" `
     --specpath "$Root\build\pyinstaller" `
     --add-data "$Root\annotator\index.html;annotator" `
+    --add-data "$Root\assets;assets" `
     --exclude-module numpy `
     --exclude-module cv2 `
     --exclude-module tkinter `
@@ -50,6 +55,6 @@ python -m PyInstaller `
     --hidden-import apply_thick_mosaic `
     --hidden-import bottle `
     --hidden-import waitress `
-    "$Root\launch_remask_annotator.py"
+    "$Root\launch_motion_mosaic.py"
 
-Write-Host "Built $Root\RemaskAnnotator.exe"
+Write-Host "Built $Root\MotionMosaic.exe"
