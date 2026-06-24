@@ -55,8 +55,32 @@ WEBM_COMPRESS_CANDIDATES = [
     (56, 0.7),
     (63, 0.6),
 ]
-DEFAULT_ANIMATED_FORMAT = "webp"
-ANIMATED_OUTPUT_FORMATS = {"webp", "webm"}
+ANIMATED_AVIF_MAX_SIDE = 1216
+ANIMATED_AVIF_MIN_BYTES = 600_000
+ANIMATED_AVIF_CRF_CANDIDATES = [
+    12,
+    14,
+    16,
+    18,
+    20,
+    22,
+    24,
+    26,
+    28,
+    30,
+    32,
+    34,
+    36,
+    40,
+    44,
+    48,
+    52,
+    56,
+    60,
+    63,
+]
+DEFAULT_ANIMATED_FORMAT = "avif"
+ANIMATED_OUTPUT_FORMATS = {"avif", "webp", "webm"}
 
 
 def source_dir() -> Path:
@@ -372,6 +396,164 @@ def save_compressed_animated_webp(
         shutil.rmtree(trial_dir, ignore_errors=True)
 
 
+def dynamic_side_candidates(width: int, height: int, max_side: int = ANIMATED_AVIF_MAX_SIDE) -> list[int]:
+    source_side = max(width, height)
+    preferred = [
+        min(max_side, source_side),
+        1216,
+        1024,
+        896,
+        768,
+        720,
+        640,
+        576,
+        512,
+        448,
+        384,
+        320,
+        256,
+    ]
+    candidates = {side for side in preferred if 0 < side <= min(max_side, source_side)}
+    return sorted(candidates, reverse=True)
+
+
+def scaled_avif_frame(frame: Image.Image, side: int) -> Image.Image:
+    prepared = frame.convert("RGB")
+    width, height = prepared.size
+    scale = min(1.0, side / max(width, height))
+    if scale < 0.999:
+        prepared = prepared.resize(
+            (max(1, int(round(width * scale))), max(1, int(round(height * scale)))),
+            Image.Resampling.LANCZOS,
+        )
+    next_size = even_size(prepared.size)
+    if prepared.size != next_size:
+        prepared = prepared.resize(next_size, Image.Resampling.LANCZOS)
+    return prepared
+
+
+def save_avif(
+    frames: list[Image.Image],
+    durations: list[int],
+    output: Path,
+    *,
+    crf: int,
+    side: int,
+) -> None:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    temp_dir = OUTPUT_DIR / "_avif_frames" / temp_key_for_output(output)
+    shutil.rmtree(temp_dir, ignore_errors=True)
+    temp_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        frame_paths = []
+        for index, frame in enumerate(frames):
+            prepared = scaled_avif_frame(frame, side)
+            frame_path = temp_dir / f"frame_{index:06d}.png"
+            prepared.save(frame_path)
+            frame_paths.append(frame_path)
+
+        manifest = temp_dir / "frames.txt"
+        write_concat_manifest(frame_paths, durations, manifest)
+        subprocess.run(
+            [
+                ffmpeg_path(),
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                str(manifest),
+                "-an",
+                "-fps_mode",
+                "vfr",
+                "-c:v",
+                "libaom-av1",
+                "-b:v",
+                "0",
+                "-crf",
+                str(crf),
+                "-cpu-used",
+                "8",
+                "-row-mt",
+                "1",
+                "-pix_fmt",
+                "yuv420p",
+                "-f",
+                "avif",
+                "-loop",
+                "0",
+                str(output),
+            ],
+            check=True,
+        )
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def save_compressed_animated_avif(
+    frames: list[Image.Image],
+    durations: list[int],
+    output: Path,
+    *,
+    max_bytes: int | None = DEFAULT_MAX_OUTPUT_BYTES,
+) -> dict:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    trial_dir = OUTPUT_DIR / "_avif_trials" / temp_key_for_output(output)
+    shutil.rmtree(trial_dir, ignore_errors=True)
+    trial_dir.mkdir(parents=True, exist_ok=True)
+    best_smallest: tuple[int, Path, int, int] | None = None
+    best_under_min: tuple[int, Path, int, int] | None = None
+    width, height = frames[0].size
+    source_side = max(width, height)
+    min_bytes = min(ANIMATED_AVIF_MIN_BYTES, max_bytes) if max_bytes else 0
+
+    try:
+        for side in dynamic_side_candidates(width, height):
+            for crf in ANIMATED_AVIF_CRF_CANDIDATES:
+                trial = trial_dir / f"s{side}_crf{crf}.avif"
+                save_avif(frames, durations, trial, crf=crf, side=side)
+                size = trial.stat().st_size
+                if best_smallest is None or size < best_smallest[0]:
+                    best_smallest = (size, trial, crf, side)
+                if max_bytes is None or size <= max_bytes:
+                    selected = (size, trial, crf, side)
+                    if size >= min_bytes:
+                        shutil.copy2(trial, output)
+                        return {
+                            "crf": crf,
+                            "scale": round(side / source_side, 4),
+                            "widthLimit": side,
+                            "targetBytes": max_bytes,
+                            "size": output.stat().st_size,
+                            "underMinTarget": False,
+                        }
+                    if best_under_min is None or size > best_under_min[0]:
+                        best_under_min = selected
+                    break
+
+        under_min_target = best_under_min is not None
+        selected = best_under_min or best_smallest
+        if selected is None:
+            raise RuntimeError("No animated AVIF candidate was generated")
+        _size, trial, crf, side = selected
+        shutil.copy2(trial, output)
+        return {
+            "crf": crf,
+            "scale": round(side / source_side, 4),
+            "widthLimit": side,
+            "targetBytes": max_bytes,
+            "size": output.stat().st_size,
+            "underMinTarget": under_min_target,
+        }
+    finally:
+        shutil.rmtree(trial_dir, ignore_errors=True)
+
+
 def ffmpeg_path() -> str:
     if FFMPEG.exists():
         return str(FFMPEG)
@@ -545,7 +727,14 @@ def process_asset_report(
         with Image.open(frame_path) as frame:
             processed.append(apply_mosaic(frame, shapes))
 
-    if animated and output_format == "webm":
+    if animated and output_format == "avif":
+        encode = save_compressed_animated_avif(
+            processed,
+            durations,
+            output,
+            max_bytes=max_bytes,
+        )
+    elif animated and output_format == "webm":
         encode = save_compressed_animated_webm(
             processed,
             durations,
@@ -583,9 +772,11 @@ def process_asset_report(
         "quality": encode.get("quality"),
         "crf": encode.get("crf"),
         "scale": encode.get("scale"),
+        "widthLimit": encode.get("widthLimit"),
+        "underMinTarget": encode.get("underMinTarget"),
         "targetBytes": encode.get("targetBytes"),
     }
-    codec_detail = f"crf={report['crf']}" if animated and output_format == "webm" else f"q={report['quality']}"
+    codec_detail = f"crf={report['crf']}" if animated and output_format in {"avif", "webm"} else f"q={report['quality']}"
     print(
         f"{asset_id}: {len(frame_paths)} frames, censored {touched}, "
         f"{report['kind']} {report['format']} {codec_detail} scale={report['scale']}, "

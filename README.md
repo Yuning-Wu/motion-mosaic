@@ -1,11 +1,11 @@
 # Remask Annotator
 
-Local tool for marking mosaic rectangles on static images and animated GIF/WebP files, then exporting static images as WebP and animated files as WebP by default or WebM when selected.
+Local tool for marking mosaic rectangles on static images and animated GIF/WebP files, then exporting static images as WebP and animated files as AVIF by default, or WebP/WebM when selected.
 
 ## Layout
 
 - `annotator/` - browser UI and local HTTP service
-- `apply_thick_mosaic.py` - mosaic rendering plus WebP/WebM compression
+- `apply_thick_mosaic.py` - mosaic rendering plus WebP/AVIF/WebM compression
 - `data/` - local config, annotations, and extracted frames
 - `exports/` - default export root
 - `inputs/` - optional local input folder

@@ -1243,7 +1243,8 @@
         <div class="source-format-control">
           <span>动图格式</span>
           <div id="animatedFormatControl" class="source-filter" role="group" aria-label="动图导出格式">
-            <button type="button" class="active" data-format="webp">WebP</button>
+            <button type="button" class="active" data-format="avif">AVIF</button>
+            <button type="button" data-format="webp">WebP</button>
             <button type="button" data-format="webm">WebM</button>
           </div>
         </div>
@@ -1484,7 +1485,7 @@
       sourceCollapsedDirs: new Set(),
       sourceFilter: 'all',
       sourceKindFilter: 'all',
-      animatedFormat: 'webp',
+      animatedFormat: 'avif',
       shapeClipboard: [],
       shortcuts: { ...DEFAULT_SHORTCUTS },
       capturingShortcut: null
@@ -3893,7 +3894,7 @@
     animatedFormatControl.addEventListener('click', evt => {
       const button = evt.target.closest('button[data-format]');
       if (!button) return;
-      state.animatedFormat = button.dataset.format || 'webp';
+      state.animatedFormat = button.dataset.format || 'avif';
       renderSourceFilter();
       statusEl.textContent = `动图将导出为 ${state.animatedFormat.toUpperCase()}`;
     });
