@@ -705,7 +705,7 @@
     }
 
     .source-actions {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 6px;
       margin-top: 8px;
     }
@@ -1635,7 +1635,7 @@
     }
 
     .source-actions {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .source-actions .wide,
@@ -1660,50 +1660,6 @@
       font-size: 12px;
     }
 
-    .shortcut-details {
-      display: block;
-    }
-
-    .shortcut-details summary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      list-style: none;
-      cursor: pointer;
-      color: var(--line-strong);
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .shortcut-details summary::-webkit-details-marker {
-      display: none;
-    }
-
-    .shortcut-details summary::before {
-      content: "";
-      width: 7px;
-      height: 7px;
-      border-right: 2px solid var(--accent);
-      border-bottom: 2px solid var(--accent);
-      transform: rotate(-45deg);
-      transition: transform 140ms ease;
-      flex: 0 0 auto;
-    }
-
-    .shortcut-details[open] summary::before {
-      transform: rotate(45deg);
-    }
-
-    .shortcut-details summary span {
-      flex: 1;
-    }
-
-    .shortcut-details summary .small-btn {
-      min-height: 28px;
-      padding: 0 8px;
-    }
-
     .shortcut-list {
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 6px;
@@ -1724,6 +1680,212 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .export-setting-summary {
+      grid-column: 1 / -1;
+      min-height: 26px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      border: 1px solid #cbd8d2;
+      border-radius: 5px;
+      background: #eef4f1;
+      color: #52615c;
+      font-size: 11px;
+      font-weight: 650;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .settings-btn {
+      width: 32px;
+      min-height: 32px;
+      border-radius: 5px;
+    }
+
+    .pixel-gear {
+      position: relative;
+      width: 17px;
+      height: 17px;
+      display: block;
+      image-rendering: pixelated;
+    }
+
+    .pixel-gear::before {
+      content: "";
+      position: absolute;
+      left: 7px;
+      top: 7px;
+      width: 3px;
+      height: 3px;
+      background: var(--panel-soft);
+      box-shadow:
+        0 -7px 0 var(--accent),
+        0 7px 0 var(--accent),
+        -7px 0 0 var(--accent),
+        7px 0 0 var(--accent),
+        -5px -5px 0 var(--accent),
+        5px -5px 0 var(--accent),
+        -5px 5px 0 var(--accent),
+        5px 5px 0 var(--accent),
+        0 0 0 3px var(--accent);
+    }
+
+    .settings-overlay[hidden] {
+      display: none !important;
+    }
+
+    .settings-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(15, 23, 42, 0.42);
+    }
+
+    .settings-dialog {
+      width: min(620px, calc(100vw - 48px));
+      max-height: calc(100vh - 48px);
+      display: grid;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+      border: 2px solid #25384a;
+      border-radius: 6px;
+      background: #fbfbfa;
+      box-shadow:
+        0 0 0 3px rgba(143, 216, 198, 0.28),
+        0 16px 0 rgba(0, 0, 0, 0.18),
+        0 30px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .settings-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px;
+      border-bottom: 1px solid rgba(23, 32, 51, 0.12);
+      background: #efe8d9;
+    }
+
+    .settings-header h2 {
+      margin: 0 0 3px;
+      font-size: 14px;
+      color: #20272d;
+    }
+
+    .settings-header span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .settings-body {
+      display: grid;
+      gap: 0;
+      overflow: auto;
+      padding: 0 14px 14px;
+    }
+
+    .settings-section {
+      display: grid;
+      gap: 10px;
+      padding-top: 14px;
+      margin-top: 14px;
+      border-top: 1px solid rgba(23, 32, 51, 0.11);
+    }
+
+    .settings-section:first-child {
+      margin-top: 0;
+      border-top: 0;
+    }
+
+    .settings-section-head,
+    .settings-row,
+    .settings-toggle {
+      display: grid;
+      grid-template-columns: minmax(120px, 0.42fr) minmax(0, 1fr);
+      align-items: center;
+      gap: 12px;
+    }
+
+    .settings-section-head {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .settings-section-head h3 {
+      margin: 0;
+      color: #20272d;
+      font-size: 12px;
+    }
+
+    .settings-section-head span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+
+    .settings-row > span:first-child,
+    .settings-toggle strong {
+      color: #353c43;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .settings-toggle {
+      cursor: pointer;
+    }
+
+    .settings-toggle span {
+      display: grid;
+      gap: 3px;
+    }
+
+    .settings-toggle small,
+    .settings-hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .settings-toggle input {
+      justify-self: end;
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .settings-segment {
+      width: 100%;
+    }
+
+    .settings-row.compact {
+      grid-template-columns: minmax(120px, 0.42fr) auto;
+      justify-content: space-between;
+    }
+
+    .number-control {
+      display: grid;
+      grid-template-columns: 92px auto;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .number-control .input {
+      min-height: 30px;
+      text-align: right;
+    }
+
+    .settings-hint {
+      margin: 0;
+      padding-left: calc(42% + 12px);
     }
   </style>
 </head>
@@ -1758,14 +1920,7 @@
         <button id="saveDirBtn" class="small-btn primary">应用目录</button>
         <button id="refreshBtn" class="small-btn">刷新列表</button>
         <button id="selectAllSourcesBtn" class="small-btn">勾选全部</button>
-        <div class="source-format-control">
-          <span>动图格式</span>
-          <div id="animatedFormatControl" class="source-filter" role="group" aria-label="动图导出格式">
-            <button type="button" class="active" data-format="avif">AVIF</button>
-            <button type="button" data-format="webp">WebP</button>
-            <button type="button" data-format="webm">WebM</button>
-          </div>
-        </div>
+        <div id="exportSettingSummary" class="export-setting-summary">AVIF · 自动压缩 1 MB</div>
         <button id="exportSelectedBtn" class="small-btn primary wide" title="保存标注；动图按所选格式导出，静态图导出 WebP">导出已完成</button>
       </div>
       <div id="exportStatus" class="export-status"></div>
@@ -1814,6 +1969,9 @@
     <section class="right">
       <div class="panel-head">
         <h2>编辑</h2>
+        <button id="settingsBtn" class="icon-btn settings-btn" type="button" aria-label="设置" title="设置" aria-expanded="false">
+          <span class="pixel-gear" aria-hidden="true"></span>
+        </button>
       </div>
       <div class="tool-grid">
         <button id="rectTool" class="tool-btn active">矩形</button>
@@ -1875,19 +2033,62 @@
         </div>
       </div>
 
-      <details class="group shortcut-details">
-        <summary>
-          <span>快捷键</span>
-          <button id="resetShortcutsBtn" class="small-btn" type="button">重置</button>
-        </summary>
-        <div id="shortcutList" class="shortcut-list"></div>
-      </details>
-
       <div class="group">
         <div class="section-head">
           <h2>本帧区域</h2>
         </div>
         <div id="shapeList" class="shape-list"></div>
+      </div>
+    </section>
+  </div>
+
+  <div id="settingsOverlay" class="settings-overlay" hidden>
+    <section class="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <header class="settings-header">
+        <div>
+          <h2 id="settingsTitle">设置</h2>
+          <span>导出和快捷键</span>
+        </div>
+        <button id="settingsCloseBtn" class="icon-btn" type="button" aria-label="关闭设置">×</button>
+      </header>
+      <div class="settings-body">
+        <section class="settings-section">
+          <div class="settings-section-head">
+            <h3>导出</h3>
+            <span id="settingsExportSummary">AVIF · 自动压缩 1 MB</span>
+          </div>
+          <div class="settings-row">
+            <span>动图格式</span>
+            <div id="animatedFormatControl" class="source-filter settings-segment" role="group" aria-label="动图导出格式">
+              <button type="button" class="active" data-format="avif">AVIF</button>
+              <button type="button" data-format="webp">WebP</button>
+              <button type="button" data-format="webm">WebM</button>
+            </div>
+          </div>
+          <label class="settings-toggle" for="autoCompressToggle">
+            <span>
+              <strong>自动压缩</strong>
+              <small>按目标体积迭代压缩导出文件</small>
+            </span>
+            <input id="autoCompressToggle" type="checkbox" checked>
+          </label>
+          <label class="settings-row compact" for="maxOutputMbInput">
+            <span>最大体积</span>
+            <span class="number-control">
+              <input id="maxOutputMbInput" class="input" type="number" min="0.1" max="100" step="0.1" value="1">
+              <span>MB</span>
+            </span>
+          </label>
+          <p id="compressHint" class="settings-hint">默认自动压缩到 1 MB 以内。</p>
+        </section>
+
+        <section class="settings-section">
+          <div class="settings-section-head">
+            <h3>快捷键</h3>
+            <button id="resetShortcutsBtn" class="small-btn" type="button">重置</button>
+          </div>
+          <div id="shortcutList" class="shortcut-list"></div>
+        </section>
       </div>
     </section>
   </div>
@@ -1901,6 +2102,14 @@
     const sourceFilter = document.getElementById('sourceFilter');
     const sourceKindFilter = document.getElementById('sourceKindFilter');
     const animatedFormatControl = document.getElementById('animatedFormatControl');
+    const exportSettingSummary = document.getElementById('exportSettingSummary');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsOverlay = document.getElementById('settingsOverlay');
+    const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+    const settingsExportSummary = document.getElementById('settingsExportSummary');
+    const autoCompressToggle = document.getElementById('autoCompressToggle');
+    const maxOutputMbInput = document.getElementById('maxOutputMbInput');
+    const compressHint = document.getElementById('compressHint');
     const directoryMeta = document.getElementById('directoryMeta');
     const exportStatus = document.getElementById('exportStatus');
     const selectAllSourcesBtn = document.getElementById('selectAllSourcesBtn');
@@ -1939,6 +2148,11 @@
     const AUTO_SAVE_DELAY = 300;
     const SHORTCUT_STORAGE_KEY = 'motionMosaicShortcuts.v1';
     const LEGACY_SHORTCUT_STORAGE_KEY = 'remaskShortcuts.v1';
+    const EXPORT_SETTINGS_STORAGE_KEY = 'motionMosaicExportSettings.v1';
+    const DEFAULT_EXPORT_MAX_MB = 1;
+    const MIN_EXPORT_MAX_MB = 0.1;
+    const MAX_EXPORT_MAX_MB = 100;
+    const ANIMATED_FORMATS = new Set(['avif', 'webp', 'webm']);
     const SHORTCUT_ITEMS = [
       ['prevFrame', '上一帧'],
       ['nextFrame', '下一帧'],
@@ -2005,6 +2219,8 @@
       sourceFilter: 'all',
       sourceKindFilter: 'all',
       animatedFormat: 'avif',
+      exportAutoCompress: true,
+      exportMaxMB: DEFAULT_EXPORT_MAX_MB,
       shapeClipboard: [],
       shortcuts: { ...DEFAULT_SHORTCUTS },
       capturingShortcut: null,
@@ -2040,6 +2256,89 @@
       } catch {
         // Shortcut customization is local convenience; annotation saving is unaffected.
       }
+    }
+
+    function normalizeExportMaxMB(value) {
+      const number = Number(value);
+      if (!Number.isFinite(number) || number <= 0) return DEFAULT_EXPORT_MAX_MB;
+      return Math.min(MAX_EXPORT_MAX_MB, Math.max(MIN_EXPORT_MAX_MB, Math.round(number * 10) / 10));
+    }
+
+    function formatExportMB(value) {
+      const normalized = normalizeExportMaxMB(value);
+      return Number.isInteger(normalized) ? String(normalized) : normalized.toFixed(1);
+    }
+
+    function exportTargetBytes() {
+      if (!state.exportAutoCompress) return null;
+      return Math.round(normalizeExportMaxMB(state.exportMaxMB) * 1024 * 1024);
+    }
+
+    function exportSettingsLabel() {
+      const format = state.animatedFormat.toUpperCase();
+      return state.exportAutoCompress
+        ? `${format} · 自动压缩 ${formatExportMB(state.exportMaxMB)} MB`
+        : `${format} · 不限制体积`;
+    }
+
+    function loadExportSettings() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(EXPORT_SETTINGS_STORAGE_KEY) || '{}');
+        if (ANIMATED_FORMATS.has(stored.animatedFormat)) {
+          state.animatedFormat = stored.animatedFormat;
+        }
+        if (typeof stored.autoCompress === 'boolean') {
+          state.exportAutoCompress = stored.autoCompress;
+        }
+        if (stored.maxMB !== undefined) {
+          state.exportMaxMB = normalizeExportMaxMB(stored.maxMB);
+        }
+      } catch {
+        state.animatedFormat = 'avif';
+        state.exportAutoCompress = true;
+        state.exportMaxMB = DEFAULT_EXPORT_MAX_MB;
+      }
+    }
+
+    function saveExportSettings() {
+      try {
+        localStorage.setItem(EXPORT_SETTINGS_STORAGE_KEY, JSON.stringify({
+          animatedFormat: state.animatedFormat,
+          autoCompress: state.exportAutoCompress,
+          maxMB: normalizeExportMaxMB(state.exportMaxMB)
+        }));
+      } catch {
+        // Export preferences are local convenience; rendering still uses safe defaults.
+      }
+    }
+
+    function renderExportSettings() {
+      const label = exportSettingsLabel();
+      exportSettingSummary.textContent = label;
+      settingsExportSummary.textContent = label;
+      autoCompressToggle.checked = state.exportAutoCompress;
+      maxOutputMbInput.disabled = !state.exportAutoCompress;
+      maxOutputMbInput.value = formatExportMB(state.exportMaxMB);
+      compressHint.textContent = state.exportAutoCompress
+        ? `导出时会尝试压到 ${formatExportMB(state.exportMaxMB)} MB 以内；AVIF 较慢但默认保留。`
+        : '关闭后不按目标体积迭代压缩，只按所选格式正常导出。';
+      renderSourceFilter();
+    }
+
+    function openSettings() {
+      renderExportSettings();
+      renderShortcutList();
+      settingsOverlay.hidden = false;
+      settingsBtn.setAttribute('aria-expanded', 'true');
+      settingsCloseBtn.focus();
+    }
+
+    function closeSettings() {
+      state.capturingShortcut = null;
+      settingsOverlay.hidden = true;
+      settingsBtn.setAttribute('aria-expanded', 'false');
+      renderShortcutList();
+      settingsBtn.focus();
     }
 
     function formatShortcut(combo) {
@@ -3655,7 +3954,15 @@
       const percent = total ? Math.min(100, Math.round(done / total * 100)) : 0;
       const elapsed = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
       const format = String(job?.animatedFormat || state.animatedFormat || '').toUpperCase();
-      const title = job?.status === 'queued' ? '等待导出' : `正在压缩${format ? ` · ${format}` : ''}`;
+      const targetBytes = job && Object.prototype.hasOwnProperty.call(job, 'maxBytes')
+        ? job.maxBytes
+        : exportTargetBytes();
+      const compressionLabel = targetBytes
+        ? ` · ≤${formatExportMB(Number(targetBytes) / 1024 / 1024)} MB`
+        : ' · 不限体积';
+      const title = job?.status === 'queued'
+        ? '等待导出'
+        : `正在导出${format ? ` · ${format}` : ''}${compressionLabel}`;
       const detail = current
         ? `当前：${basenamePath(current)}`
         : (job?.status === 'queued' ? '等待压缩器启动' : '压缩器启动中');
@@ -3685,19 +3992,37 @@
       }
     }
 
-    async function startExportRender(ids, startedAt) {
+    async function startExportRender(ids, startedAt, maxBytes, animatedFormat) {
       const request = {
         method: 'POST',
-        body: JSON.stringify({ assetIds: ids, maxBytes: 1024 * 1024, animatedFormat: state.animatedFormat })
+        body: JSON.stringify({
+          assetIds: ids,
+          maxBytes,
+          animatedFormat
+        })
       };
       try {
         const data = await apiJson('/api/render/start', request);
         return { mode: 'job', data };
       } catch (error) {
         if (error.status !== 404) throw error;
-        renderExportProgress({ status: 'running', total: ids.length, done: 0, current: '旧服务同步压缩中' }, startedAt);
+        renderExportProgress({
+          status: 'running',
+          total: ids.length,
+          done: 0,
+          current: '旧服务同步压缩中',
+          maxBytes,
+          animatedFormat
+        }, startedAt);
         const timer = setInterval(() => {
-          renderExportProgress({ status: 'running', total: ids.length, done: 0, current: '旧服务同步压缩中' }, startedAt);
+          renderExportProgress({
+            status: 'running',
+            total: ids.length,
+            done: 0,
+            current: '旧服务同步压缩中',
+            maxBytes,
+            animatedFormat
+          }, startedAt);
         }, 1000);
         try {
           const data = await apiJson('/api/render', request);
@@ -3716,10 +4041,12 @@
       const progressText = options.progressText || `准备导出 ${ids.length} 个文件...`;
       setBusy(true, progressText);
       const startedAt = Date.now();
-      renderExportProgress({ status: 'queued', total: ids.length, done: 0 }, startedAt);
+      const maxBytes = exportTargetBytes();
+      const animatedFormat = state.animatedFormat;
+      renderExportProgress({ status: 'queued', total: ids.length, done: 0, maxBytes, animatedFormat }, startedAt);
       try {
         await saveAnnotations({ quiet: true });
-        const started = await startExportRender(ids, startedAt);
+        const started = await startExportRender(ids, startedAt, maxBytes, animatedFormat);
         const job = started.mode === 'job' ? await waitForExportJob(started.data.jobId, startedAt) : null;
         const results = job ? (job.results || []) : (started.data.results || []);
         const outputDir = job?.outputDir || started.data?.job?.outputDir || started.data?.outputDir || '';
@@ -4382,6 +4709,11 @@
     });
 
     document.getElementById('rectTool').addEventListener('click', () => setTool());
+    settingsBtn.addEventListener('click', openSettings);
+    settingsCloseBtn.addEventListener('click', closeSettings);
+    settingsOverlay.addEventListener('click', evt => {
+      if (evt.target === settingsOverlay) closeSettings();
+    });
     resetShortcutsBtn.addEventListener('click', evt => {
       evt.preventDefault();
       evt.stopPropagation();
@@ -4490,8 +4822,30 @@
       const button = evt.target.closest('button[data-format]');
       if (!button) return;
       state.animatedFormat = button.dataset.format || 'avif';
-      renderSourceFilter();
+      saveExportSettings();
+      renderExportSettings();
       statusEl.textContent = `动图将导出为 ${state.animatedFormat.toUpperCase()}`;
+    });
+    autoCompressToggle.addEventListener('change', () => {
+      state.exportAutoCompress = autoCompressToggle.checked;
+      saveExportSettings();
+      renderExportSettings();
+      statusEl.textContent = state.exportAutoCompress
+        ? `自动压缩已开启：${formatExportMB(state.exportMaxMB)} MB`
+        : '自动压缩已关闭';
+    });
+    maxOutputMbInput.addEventListener('change', () => {
+      state.exportMaxMB = normalizeExportMaxMB(maxOutputMbInput.value);
+      saveExportSettings();
+      renderExportSettings();
+      statusEl.textContent = `最大体积：${formatExportMB(state.exportMaxMB)} MB`;
+    });
+    maxOutputMbInput.addEventListener('input', () => {
+      const value = Number(maxOutputMbInput.value);
+      if (!Number.isFinite(value) || value <= 0) return;
+      state.exportMaxMB = normalizeExportMaxMB(value);
+      exportSettingSummary.textContent = exportSettingsLabel();
+      settingsExportSummary.textContent = exportSettingsLabel();
     });
     selectAllSourcesBtn.addEventListener('click', () => {
       if (!state.workspace?.sourceFiles.length) {
@@ -4540,6 +4894,15 @@
         evt.preventDefault();
         setShortcut(state.capturingShortcut, combo);
         return;
+      }
+      if (!settingsOverlay.hidden) {
+        if (evt.key === 'Escape') {
+          evt.preventDefault();
+          closeSettings();
+        }
+        if (evt.target instanceof Element && evt.target.closest('#settingsOverlay')) {
+          return;
+        }
       }
       if (evt.target instanceof HTMLInputElement) return;
       if ((evt.ctrlKey || evt.metaKey) && !evt.shiftKey && evt.key.toLowerCase() === 'c') {
@@ -4640,7 +5003,9 @@
     }
 
     loadShortcuts();
+    loadExportSettings();
     renderShortcutList();
+    renderExportSettings();
     boot().catch(showError);
   </script>
 </body>

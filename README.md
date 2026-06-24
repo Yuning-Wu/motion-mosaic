@@ -9,6 +9,7 @@ Motion Mosaic is a local mosaic annotation and export tool for static images and
 - Review animated assets frame by frame.
 - Export static images as WebP.
 - Export animated assets as AVIF by default, with WebP and WebM also available.
+- Configure export format, automatic target-size compression, and shortcuts from the settings panel.
 - Run in a native desktop window or through the local web UI.
 - Keep all annotations, extracted frames, and exports local.
 

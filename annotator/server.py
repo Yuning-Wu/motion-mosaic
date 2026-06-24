@@ -604,6 +604,7 @@ def run_render_job(
         done=0,
         outputDir=str(output_root),
         animatedFormat=animated_format,
+        maxBytes=max_bytes,
     )
     try:
         for index, asset_id in enumerate(asset_ids):
@@ -657,6 +658,7 @@ def start_render_job(
             "results": [],
             "outputDir": str(output_root),
             "animatedFormat": animated_format,
+            "maxBytes": max_bytes,
             "createdAt": now,
             "updatedAt": now,
         }
