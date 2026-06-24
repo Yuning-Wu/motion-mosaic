@@ -2252,6 +2252,130 @@
     #exportSelectedBtn {
       grid-column: 1 / -1;
     }
+
+    .topbar {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 7px;
+      padding: 9px 12px;
+    }
+
+    .play-btn {
+      justify-self: center;
+      width: 38px;
+      min-height: 32px;
+      border-radius: 999px;
+    }
+
+    .frame-nav {
+      display: none !important;
+    }
+
+    .timeline-panel {
+      width: 100%;
+    }
+
+    .timeline-meta {
+      min-height: 20px;
+    }
+
+    .motion-preview-card {
+      display: none;
+    }
+
+    #cancelBtn,
+    #undoBtn,
+    #saveBtn {
+      display: none;
+    }
+
+    .tool-grid {
+      grid-template-columns: 1fr;
+      overflow: visible;
+    }
+
+    .tool-picker {
+      position: relative;
+      min-width: 0;
+    }
+
+    #toolModeBtn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      position: relative;
+    }
+
+    .tool-caret {
+      position: absolute;
+      right: 12px;
+      width: 7px;
+      height: 7px;
+      border-right: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      transform: rotate(45deg) translateY(-2px);
+      opacity: 0.86;
+    }
+
+    .tool-menu[hidden] {
+      display: none;
+    }
+
+    .tool-menu {
+      position: absolute;
+      z-index: 20;
+      top: calc(100% + 5px);
+      left: 0;
+      right: 0;
+      display: grid;
+      gap: 4px;
+      padding: 5px;
+      border: 1px solid #b7c8c0;
+      border-radius: 6px;
+      background: var(--panel-soft);
+      box-shadow: 0 10px 24px rgba(23, 32, 51, 0.16);
+    }
+
+    .tool-menu button {
+      min-height: 30px;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--text);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .tool-menu button:hover {
+      background: var(--accent-weak);
+      color: var(--accent-strong);
+    }
+
+    .action-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #completeBtn {
+      grid-column: auto;
+    }
+
+    .range-panel {
+      gap: 7px;
+    }
+
+    .range-summary {
+      padding: 7px 8px;
+      border-radius: 5px;
+    }
+
+    .range-actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #setRangeSourceBtn {
+      grid-column: 1 / -1;
+    }
   </style>
 </head>
 <body>
@@ -2282,7 +2406,6 @@
         </div>
       </div>
       <div class="source-actions">
-        <button id="saveDirBtn" class="small-btn primary">应用目录</button>
         <button id="refreshBtn" class="small-btn">刷新列表</button>
         <button id="selectAllSourcesBtn" class="small-btn">勾选全部</button>
         <div id="exportSettingSummary" class="export-setting-summary">AVIF · 自动压缩 1 MB</div>
@@ -2355,22 +2478,30 @@
         </button>
       </div>
       <div class="tool-grid">
-        <button id="rectTool" class="tool-btn active">矩形</button>
-        <button id="polygonTool" class="tool-btn">多边形</button>
+        <div class="tool-picker">
+          <button id="toolModeBtn" class="tool-btn active" type="button" aria-haspopup="true" aria-expanded="false">
+            <span id="toolModeLabel">矩形</span>
+            <span class="tool-caret" aria-hidden="true"></span>
+          </button>
+          <div id="toolMenu" class="tool-menu" hidden>
+            <button type="button" data-tool="rect">矩形</button>
+            <button type="button" data-tool="polygon">多边形</button>
+          </div>
+        </div>
       </div>
 
       <div class="action-grid">
         <button id="cancelBtn" class="small-btn">取消</button>
         <button id="undoBtn" class="small-btn">撤销</button>
         <button id="completeBtn" class="small-btn">无需打码</button>
-        <button id="saveBtn" class="small-btn primary">保存标注</button>
+        <button id="saveBtn" class="small-btn primary" title="已自动保存；需要时可手动立即保存">立即保存</button>
         <button id="deleteBtn" class="small-btn danger">删除选中</button>
         <button id="clearBtn" class="small-btn danger">清空本帧</button>
       </div>
 
       <div class="group">
         <div class="section-head">
-          <h2>帧范围</h2>
+          <h2>范围</h2>
           <span id="rangeHint" class="range-hint">先画区域</span>
         </div>
         <div class="range-panel">
@@ -2383,16 +2514,16 @@
           </div>
           <div id="rangeFrameStrip" class="range-frame-strip" hidden></div>
           <div class="range-actions">
-            <button id="setRangeSourceBtn" class="small-btn">选本帧区域</button>
+            <button id="setRangeSourceBtn" class="small-btn">用本帧</button>
             <button id="addRangeSegmentBtn" class="small-btn">加入这段</button>
             <button id="setRangeStartBtn" class="small-btn">设为开始</button>
             <button id="setRangeEndBtn" class="small-btn">设为结束</button>
-            <button id="setWholeRangeBtn" class="small-btn">全片目标</button>
-            <button id="clearRangeSegmentsBtn" class="small-btn">清空目标</button>
+            <button id="setWholeRangeBtn" class="small-btn">全片</button>
+            <button id="clearRangeSegmentsBtn" class="small-btn">清除</button>
           </div>
           <div class="range-commit-actions">
-            <button id="applyRangeBtn" class="small-btn primary">应用到目标帧</button>
-            <button id="removeRangeBtn" class="small-btn danger">从目标帧删除</button>
+            <button id="applyRangeBtn" class="small-btn primary">应用</button>
+            <button id="removeRangeBtn" class="small-btn danger">移除</button>
             <button id="copyShapesBtn" class="small-btn">复制区域</button>
             <button id="pasteShapesBtn" class="small-btn">粘贴到本帧</button>
           </div>
@@ -2524,6 +2655,9 @@
     const resetShortcutsBtn = document.getElementById('resetShortcutsBtn');
     const motionPreview = document.getElementById('motionPreview');
     const previewHint = document.getElementById('previewHint');
+    const toolModeBtn = document.getElementById('toolModeBtn');
+    const toolModeLabel = document.getElementById('toolModeLabel');
+    const toolMenu = document.getElementById('toolMenu');
     const HISTORY_LIMIT = 40;
     const AUTO_SAVE_DELAY = 300;
     const SHORTCUT_STORAGE_KEY = 'motionMosaicShortcuts.v1';
@@ -2836,7 +2970,7 @@
       playBtn.setAttribute('aria-label', state.playing ? '暂停' : '播放');
       playBtn.title = state.playing ? '暂停（空格）' : '播放（空格）';
       topbar.classList.toggle('playing', state.playing);
-      previewHint.textContent = !file || isSingleFrame(file) ? '静态' : (state.playing ? '播放中' : '空格播放');
+      previewHint.textContent = !file || isSingleFrame(file) ? '静态' : (state.playing ? '播放中' : '');
     }
 
     function stopPlayback() {
@@ -3579,8 +3713,11 @@
     function setTool(tool = 'rect') {
       resetCanvasInteraction();
       state.activeTool = tool === 'polygon' ? 'polygon' : 'rect';
-      document.getElementById('rectTool').classList.toggle('active', state.activeTool === 'rect');
-      document.getElementById('polygonTool').classList.toggle('active', state.activeTool === 'polygon');
+      toolModeLabel.textContent = state.activeTool === 'polygon' ? '多边形' : '矩形';
+      toolModeBtn.dataset.tool = state.activeTool;
+      toolModeBtn.classList.add('active');
+      toolModeBtn.setAttribute('aria-expanded', 'false');
+      toolMenu.hidden = true;
       statusEl.textContent = state.activeTool === 'polygon'
         ? '多边形：点击加点，点击首点/双击/Enter 完成'
         : '矩形：拖拽创建区域';
@@ -3742,14 +3879,6 @@
       if (handle === 'end') setRange(state.rangeStart, frame);
     }
 
-    function setNearestRangeHandle(evt) {
-      const frame = frameFromTimelineEvent(evt);
-      const startDistance = Math.abs(frame - state.rangeStart);
-      const endDistance = Math.abs(frame - state.rangeEnd);
-      if (startDistance <= endDistance) setRange(frame, state.rangeEnd);
-      else setRange(state.rangeStart, frame);
-    }
-
     function renderRangeFrameStrip() {
       const file = currentFile();
       const signature = rangeFrameStripSignature(file);
@@ -3896,25 +4025,25 @@
       removeRangeBtn.disabled = disabled || !sourceCount || !targetCount;
       clearRangeSegmentsBtn.disabled = disabled || !state.rangeSegments.length;
       if (!sourceCount && countFileShapes(file.id)) {
-        rangeHint.textContent = '点选一个区域';
+        rangeHint.textContent = '选择区域';
       } else if (!sourceCount) {
-        rangeHint.textContent = '画一个区域';
+        rangeHint.textContent = '未选区域';
       } else if (state.rangeSegments.length > 1 || targetSegments.length > 1) {
         rangeHint.textContent = `${targetSegments.length} 段目标帧`;
       } else if (state.rangeSegments.length) {
-        rangeHint.textContent = '已锁定目标帧';
+        rangeHint.textContent = '目标已锁定';
       } else if (rangePreviewShapes().length) {
-        rangeHint.textContent = '蓝色虚线是预览';
+        rangeHint.textContent = '预览中';
       } else if (state.frame !== state.rangeSource) {
-        rangeHint.textContent = `已锁定第 ${state.rangeSource + 1} 帧区域`;
+        rangeHint.textContent = `源 ${state.rangeSource + 1}`;
       } else {
-        rangeHint.textContent = '调整起止后应用';
+        rangeHint.textContent = '就绪';
       }
       if (singleFrame) {
         rangeSourceText.textContent = '静态图';
         rangeSpanText.textContent = '无需范围';
         rangeCountText.textContent = '-';
-        rangeHint.textContent = '静态图不用设范围';
+        rangeHint.textContent = '静态图';
         copyShapesBtn.disabled = !file || state.busy || !selectedFrameShapes().length;
         pasteShapesBtn.disabled = !file || state.busy || !state.shapeClipboard.length;
       }
@@ -4112,7 +4241,7 @@
       statusEl.textContent = `${file.name}`;
       frameText.textContent = `${state.frame + 1} / ${file.frameCount}`;
       frameKindText.textContent = fileKindText(file);
-      previewHint.textContent = isSingleFrame(file) ? '静态' : (state.playing ? '播放中' : '空格播放');
+      previewHint.textContent = isSingleFrame(file) ? '静态' : (state.playing ? '播放中' : '');
       motionPreview.src = frameUrl;
       topbar.classList.toggle('static', isSingleFrame(file));
       const image = new Image();
@@ -4253,13 +4382,13 @@
       }).catch(() => {});
     }
 
-    async function saveDirectories() {
+    async function saveDirectories(options = {}) {
       const sourceDir = sourceDirInput.value.trim();
       const outputDir = outputDirInput.value.trim();
       if (!sourceDir) return;
       if (!outputDir) return;
       const previousDir = state.workspace?.sourceDir || '';
-      setBusy(true, '应用目录...');
+      setBusy(true, options.message || '保存目录...');
       try {
         const data = await apiJson('/api/config', {
           method: 'POST',
@@ -4269,11 +4398,11 @@
         const nextDir = data.workspace?.sourceDir || '';
         if (nextDir && nextDir !== previousDir) {
           await updateActiveFiles(new Set((data.workspace.sourceFiles || []).map(source => source.id)));
-          statusEl.textContent = '目录已应用，已选择当前图片';
+          statusEl.textContent = options.successText || '目录已保存，已选择当前图片';
         } else {
           state.autoImportFailures.clear();
           scheduleAutoImport(120);
-          statusEl.textContent = '目录已应用';
+          statusEl.textContent = options.successText || '目录已保存';
         }
       } finally {
         setBusy(false);
@@ -4294,7 +4423,10 @@
           return;
         }
         input.value = data.path;
-        statusEl.textContent = isOutput ? '已选择导出目录' : '已选择图片目录';
+        await saveDirectories({
+          message: isOutput ? '保存导出目录...' : '保存图片目录...',
+          successText: isOutput ? '导出目录已保存' : '图片目录已保存'
+        });
       } finally {
         setBusy(false);
       }
@@ -5116,7 +5248,7 @@
     function pasteCopiedShapes() {
       if (!currentFile()) return;
       if (!state.shapeClipboard.length) {
-        statusEl.textContent = '没有可粘贴的区域';
+        statusEl.textContent = '剪贴板为空';
         return;
       }
       pushHistory(state.shapeClipboard.length > 1 ? '粘贴多个区域' : '粘贴区域');
@@ -5485,8 +5617,24 @@
       draw();
     });
 
-    document.getElementById('rectTool').addEventListener('click', () => setTool('rect'));
-    document.getElementById('polygonTool').addEventListener('click', () => setTool('polygon'));
+    toolModeBtn.addEventListener('click', evt => {
+      evt.preventDefault();
+      evt.stopPropagation();
+      toolMenu.hidden = !toolMenu.hidden;
+      toolModeBtn.setAttribute('aria-expanded', String(!toolMenu.hidden));
+    });
+    toolMenu.addEventListener('click', evt => {
+      const button = evt.target.closest('button[data-tool]');
+      if (!button) return;
+      evt.preventDefault();
+      evt.stopPropagation();
+      setTool(button.dataset.tool || 'rect');
+    });
+    document.addEventListener('click', evt => {
+      if (evt.target instanceof Element && evt.target.closest('.tool-picker')) return;
+      toolMenu.hidden = true;
+      toolModeBtn.setAttribute('aria-expanded', 'false');
+    });
     settingsBtn.addEventListener('click', openSettings);
     settingsCloseBtn.addEventListener('click', closeSettings);
     settingsOverlay.addEventListener('click', evt => {
@@ -5579,10 +5727,17 @@
         showError(error);
       }
     });
-    document.getElementById('saveDirBtn').addEventListener('click', () => saveDirectories().catch(showError));
     document.getElementById('sourceBrowseBtn').addEventListener('click', () => pickDirectory('source').catch(showError));
     document.getElementById('outputBrowseBtn').addEventListener('click', () => pickDirectory('output').catch(showError));
     document.getElementById('refreshBtn').addEventListener('click', () => boot().catch(showError));
+    [sourceDirInput, outputDirInput].forEach(input => {
+      input.addEventListener('keydown', evt => {
+        if (evt.key !== 'Enter') return;
+        evt.preventDefault();
+        saveDirectories().catch(showError);
+      });
+      input.addEventListener('change', () => saveDirectories().catch(showError));
+    });
     sourceFilter.addEventListener('click', evt => {
       const button = evt.target.closest('button[data-filter]');
       if (!button) return;
