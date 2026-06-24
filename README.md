@@ -4,7 +4,7 @@ Motion Mosaic is a local mosaic annotation and export tool for static images and
 
 ## Features
 
-- Annotate mosaic rectangles on static images and animated sources.
+- Annotate mosaic rectangles and polygons on static images and animated sources.
 - Automatically import and refresh selected source files.
 - Review animated assets frame by frame.
 - Export static images as WebP.

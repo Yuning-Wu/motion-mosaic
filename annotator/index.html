@@ -1380,6 +1380,14 @@
         0 2px 0 rgba(23, 32, 51, 0.16);
     }
 
+    .small-btn.primary:hover:not(:disabled),
+    .tool-btn.active:hover:not(:disabled),
+    .file-btn.active:hover:not(:disabled) {
+      background: var(--accent);
+      border-color: var(--accent-strong);
+      color: #f8fffb;
+    }
+
     .small-btn.danger {
       background: var(--danger-weak);
       border-color: #d99aa9;
@@ -1975,6 +1983,7 @@
       </div>
       <div class="tool-grid">
         <button id="rectTool" class="tool-btn active">矩形</button>
+        <button id="polygonTool" class="tool-btn">多边形</button>
       </div>
 
       <div class="action-grid">
@@ -1989,7 +1998,7 @@
       <div class="group">
         <div class="section-head">
           <h2>帧范围</h2>
-          <span id="rangeHint" class="range-hint">先画矩形</span>
+          <span id="rangeHint" class="range-hint">先画区域</span>
         </div>
         <div class="range-panel">
           <div class="range-readout">
@@ -2017,7 +2026,7 @@
           </div>
           <div id="rangeFrameStrip" class="range-frame-strip"></div>
           <div class="range-actions">
-            <button id="setRangeSourceBtn" class="small-btn">选本帧矩形</button>
+            <button id="setRangeSourceBtn" class="small-btn">选本帧区域</button>
             <button id="addRangeSegmentBtn" class="small-btn">加入这段</button>
             <button id="setRangeStartBtn" class="small-btn">设为开始</button>
             <button id="setRangeEndBtn" class="small-btn">设为结束</button>
@@ -2027,7 +2036,7 @@
           <div class="range-commit-actions">
             <button id="applyRangeBtn" class="small-btn primary">应用到目标帧</button>
             <button id="removeRangeBtn" class="small-btn danger">从目标帧删除</button>
-            <button id="copyShapesBtn" class="small-btn">复制框</button>
+            <button id="copyShapesBtn" class="small-btn">复制区域</button>
             <button id="pasteShapesBtn" class="small-btn">粘贴到本帧</button>
           </div>
         </div>
@@ -2161,7 +2170,7 @@
       ['toggleComplete', '完成并下一张'],
       ['rangeStart', '设开始'],
       ['rangeEnd', '设结束'],
-      ['applyRange', '应用当前矩形'],
+      ['applyRange', '应用当前区域'],
       ['undo', '撤销'],
       ['cancel', '取消绘制'],
       ['delete', '删除选中'],
@@ -2193,6 +2202,7 @@
       drawing: null,
       pendingSelection: null,
       resizing: null,
+      activeTool: 'rect',
       selectedId: null,
       selectedIds: [],
       selectionAnchorId: null,
@@ -2673,7 +2683,16 @@
     }
 
     function isRangeShape(shape) {
-      return shape?.type === 'rect' && Array.isArray(shape.points) && shape.points.length >= 2;
+      if (!shape || !Array.isArray(shape.points)) return false;
+      if (shape.type === 'rect') return shape.points.length >= 2;
+      if (shape.type === 'polygon') return shape.points.length >= 3;
+      return false;
+    }
+
+    function shapeLabel(shape) {
+      if (shape?.type === 'rect') return '矩形';
+      if (shape?.type === 'polygon') return '多边形';
+      return '旧区域';
     }
 
     function shapeTrackId(shape) {
@@ -2866,7 +2885,7 @@
     }
 
     function pointInRectShape(point, shape) {
-      if (!isRangeShape(shape)) return false;
+      if (shape?.type !== 'rect' || !isRangeShape(shape)) return false;
       const [a, b] = shape.points;
       const left = Math.min(a.x, b.x);
       const right = Math.max(a.x, b.x);
@@ -2875,8 +2894,48 @@
       return point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
     }
 
+    function pointInPolygonShape(point, shape) {
+      if (shape?.type !== 'polygon' || !isRangeShape(shape)) return false;
+      let inside = false;
+      const points = shape.points;
+      for (let i = 0, j = points.length - 1; i < points.length; j = i, i += 1) {
+        const a = points[i];
+        const b = points[j];
+        const intersects = ((a.y > point.y) !== (b.y > point.y)) &&
+          (point.x < (b.x - a.x) * (point.y - a.y) / ((b.y - a.y) || 1) + a.x);
+        if (intersects) inside = !inside;
+      }
+      return inside;
+    }
+
+    function distanceToSegment(point, a, b) {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      if (dx === 0 && dy === 0) return Math.hypot(point.x - a.x, point.y - a.y);
+      const ratio = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / (dx * dx + dy * dy)));
+      const x = a.x + ratio * dx;
+      const y = a.y + ratio * dy;
+      return Math.hypot(point.x - x, point.y - y);
+    }
+
+    function pointNearPolygonEdge(point, shape, tolerance = handleHitRadius()) {
+      if (shape?.type !== 'polygon' || !isRangeShape(shape)) return false;
+      const points = shape.points;
+      for (let index = 0; index < points.length; index += 1) {
+        const next = points[(index + 1) % points.length];
+        if (distanceToSegment(point, points[index], next) <= tolerance) return true;
+      }
+      return false;
+    }
+
+    function pointInShape(point, shape) {
+      if (shape?.type === 'rect') return pointInRectShape(point, shape);
+      if (shape?.type === 'polygon') return pointInPolygonShape(point, shape) || pointNearPolygonEdge(point, shape);
+      return false;
+    }
+
     function pickShapeAt(point) {
-      return [...readFrameShapes()].reverse().find(shape => pointInRectShape(point, shape)) || null;
+      return [...readFrameShapes()].reverse().find(shape => pointInShape(point, shape)) || null;
     }
 
     function rectBounds(shape) {
@@ -2892,11 +2951,28 @@
     function rectCorners(shape) {
       const { left, right, top, bottom } = rectBounds(shape);
       return [
-        { key: 'nw', x: left, y: top, cursor: 'nwse-resize' },
-        { key: 'ne', x: right, y: top, cursor: 'nesw-resize' },
-        { key: 'se', x: right, y: bottom, cursor: 'nwse-resize' },
-        { key: 'sw', x: left, y: bottom, cursor: 'nesw-resize' }
+        { kind: 'rect-corner', key: 'nw', x: left, y: top, cursor: 'nwse-resize' },
+        { kind: 'rect-corner', key: 'ne', x: right, y: top, cursor: 'nesw-resize' },
+        { kind: 'rect-corner', key: 'se', x: right, y: bottom, cursor: 'nwse-resize' },
+        { kind: 'rect-corner', key: 'sw', x: left, y: bottom, cursor: 'nesw-resize' }
       ];
+    }
+
+    function polygonHandles(shape) {
+      return (shape.points || []).map((point, index) => ({
+        kind: 'polygon-point',
+        key: `p${index}`,
+        pointIndex: index,
+        x: point.x,
+        y: point.y,
+        cursor: 'move'
+      }));
+    }
+
+    function shapeHandles(shape) {
+      if (shape.type === 'rect') return rectCorners(shape);
+      if (shape.type === 'polygon') return polygonHandles(shape);
+      return [];
     }
 
     function oppositeCorner(corner, shape) {
@@ -2924,17 +3000,86 @@
       const hitRadius = handleHitRadius();
       const shapes = [...readFrameShapes()].reverse().filter(shape => selected.has(shape.id) && isRangeShape(shape));
       for (const shape of shapes) {
-        for (const corner of rectCorners(shape)) {
-          if (Math.hypot(point.x - corner.x, point.y - corner.y) <= hitRadius) {
-            return { shape, corner };
+        for (const handle of shapeHandles(shape)) {
+          if (Math.hypot(point.x - handle.x, point.y - handle.y) <= hitRadius) {
+            return { shape, handle };
           }
         }
       }
       return null;
     }
 
+    function pickPolygonEdgeAt(point) {
+      const selected = new Set(selectedIds());
+      if (!selected.size) return null;
+      const tolerance = handleHitRadius();
+      const shapes = [...readFrameShapes()].reverse()
+        .filter(shape => selected.has(shape.id) && shape.type === 'polygon' && isRangeShape(shape));
+      for (const shape of shapes) {
+        for (let index = 0; index < shape.points.length; index += 1) {
+          const nextIndex = (index + 1) % shape.points.length;
+          const distance = distanceToSegment(point, shape.points[index], shape.points[nextIndex]);
+          if (distance <= tolerance) {
+            return { shape, edgeIndex: index, distance };
+          }
+        }
+      }
+      return null;
+    }
+
+    function insertPolygonPoint(edge, point) {
+      const shape = readFrameShapes().find(item => item.id === edge?.shape?.id);
+      if (!shape || shape.type !== 'polygon') return false;
+      pushHistory('添加多边形顶点');
+      markCurrentFileEdited();
+      shape.points.splice(edge.edgeIndex + 1, 0, { x: point.x, y: point.y });
+      selectRangeShape(shape);
+      setDirty(true);
+      renderShapeList();
+      renderRangeControls();
+      draw();
+      statusEl.textContent = '已添加多边形顶点';
+      return true;
+    }
+
     function rectLargeEnough(a, b) {
       return Math.abs(a.x - b.x) >= RECT_MIN_SIZE && Math.abs(a.y - b.y) >= RECT_MIN_SIZE;
+    }
+
+    function polygonArea(points) {
+      if (!Array.isArray(points) || points.length < 3) return 0;
+      let area = 0;
+      for (let index = 0; index < points.length; index += 1) {
+        const next = points[(index + 1) % points.length];
+        const current = points[index];
+        area += current.x * next.y - next.x * current.y;
+      }
+      return Math.abs(area) / 2;
+    }
+
+    function polygonLargeEnough(points) {
+      if (!Array.isArray(points) || points.length < 3) return false;
+      return polygonArea(points) >= RECT_MIN_SIZE * RECT_MIN_SIZE;
+    }
+
+    function polygonCloseHit(point) {
+      if (!state.drawing || state.drawing.type !== 'polygon' || state.drawing.points.length < 3) return false;
+      const first = state.drawing.points[0];
+      return Math.hypot(point.x - first.x, point.y - first.y) <= handleHitRadius();
+    }
+
+    function removeLastPolygonPoint() {
+      if (!state.drawing || state.drawing.type !== 'polygon') return false;
+      if (state.drawing.points.length <= 1) {
+        resetCanvasInteraction();
+        draw();
+        statusEl.textContent = '已取消多边形';
+        return true;
+      }
+      state.drawing.points.pop();
+      draw();
+      statusEl.textContent = `多边形：${state.drawing.points.length} 点`;
+      return true;
     }
 
     function dragStarted(a, b) {
@@ -3000,9 +3145,14 @@
       return data;
     }
 
-    function setTool() {
+    function setTool(tool = 'rect') {
       resetCanvasInteraction();
-      document.getElementById('rectTool').classList.add('active');
+      state.activeTool = tool === 'polygon' ? 'polygon' : 'rect';
+      document.getElementById('rectTool').classList.toggle('active', state.activeTool === 'rect');
+      document.getElementById('polygonTool').classList.toggle('active', state.activeTool === 'polygon');
+      statusEl.textContent = state.activeTool === 'polygon'
+        ? '多边形：点击加点，点击首点/双击/Enter 完成'
+        : '矩形：拖拽创建区域';
       draw();
     }
 
@@ -3264,16 +3414,16 @@
       rangeStartHandle.style.left = `${percentForFrame(state.rangeStart)}%`;
       rangeEndHandle.style.left = `${percentForFrame(state.rangeEnd)}%`;
       const sourceCount = rangeSourceShapes().length;
-      rangeSourceText.textContent = `第 ${state.rangeSource + 1} 帧 · ${sourceCount} 矩形`;
+      rangeSourceText.textContent = `第 ${state.rangeSource + 1} 帧 · ${sourceCount} 区域`;
       rangeSpanText.textContent = formatRangeSegments(targetSegments);
       rangeCountText.textContent = `${targetCount} 帧`;
       applyRangeBtn.disabled = disabled || !sourceCount || !targetCount;
       removeRangeBtn.disabled = disabled || !sourceCount || !targetCount;
       clearRangeSegmentsBtn.disabled = disabled || !state.rangeSegments.length;
       if (!sourceCount && countFileShapes(file.id)) {
-        rangeHint.textContent = '点选一个矩形';
+        rangeHint.textContent = '点选一个区域';
       } else if (!sourceCount) {
-        rangeHint.textContent = '画一个矩形';
+        rangeHint.textContent = '画一个区域';
       } else if (explicitSegments.length > 1) {
         rangeHint.textContent = `${explicitSegments.length} 段目标帧`;
       } else if (explicitSegments.length) {
@@ -3281,7 +3431,7 @@
       } else if (rangePreviewShapes().length) {
         rangeHint.textContent = '蓝色虚线是预览';
       } else if (state.frame !== state.rangeSource) {
-        rangeHint.textContent = `已锁定第 ${state.rangeSource + 1} 帧矩形`;
+        rangeHint.textContent = `已锁定第 ${state.rangeSource + 1} 帧区域`;
       } else {
         rangeHint.textContent = '调整起止后应用';
       }
@@ -3302,7 +3452,7 @@
       const sourceFrame = clampFrameIndex(state.rangeSource);
       const source = rangeSourceShapes();
       if (!source.length) {
-        statusEl.textContent = '源帧没有可应用的矩形';
+        statusEl.textContent = '源帧没有可应用的区域';
         return;
       }
 
@@ -3312,7 +3462,7 @@
         return;
       }
 
-      pushHistory('应用矩形到目标帧');
+      pushHistory('应用区域到目标帧');
       markCurrentFileEdited();
       const store = fileStore(file.id);
       const sourceTracks = source.map(ensureShapeTrack);
@@ -3333,7 +3483,7 @@
       renderShapeList();
       renderRangeControls();
       draw();
-      statusEl.textContent = `已把第 ${sourceFrame + 1} 帧的 ${source.length} 个矩形应用到 ${formatRangeSegments()}`;
+      statusEl.textContent = `已把第 ${sourceFrame + 1} 帧的 ${source.length} 个区域应用到 ${formatRangeSegments()}`;
     }
 
     function removeRangeShapesFromFrames() {
@@ -3341,7 +3491,7 @@
       if (!file) return;
       const source = rangeSourceShapes();
       if (!source.length) {
-        statusEl.textContent = '没有可删除的当前矩形';
+        statusEl.textContent = '没有可删除的当前区域';
         return;
       }
       const targets = targetFrameIndexes();
@@ -3358,11 +3508,11 @@
         return total + shapes.filter(shape => sourceTrackSet.has(shapeTrackId(shape))).length;
       }, 0);
       if (!removableCount) {
-        statusEl.textContent = '目标帧没有这些矩形';
+        statusEl.textContent = '目标帧没有这些区域';
         return;
       }
 
-      pushHistory('从目标帧删除矩形');
+      pushHistory('从目标帧删除区域');
       markCurrentFileEdited();
       let removed = 0;
       for (const frame of targets) {
@@ -3382,7 +3532,7 @@
       renderShapeList();
       renderRangeControls();
       draw();
-      statusEl.textContent = `已从 ${formatRangeSegments()} 删除 ${removed} 个矩形`;
+      statusEl.textContent = `已从 ${formatRangeSegments()} 删除 ${removed} 个区域`;
     }
 
     function setFrame(frame) {
@@ -4354,7 +4504,7 @@
         const item = document.createElement('div');
         const active = isShapeSelected(shape);
         item.className = `shape-item${active ? ' active' : ''}`;
-        item.textContent = `${index + 1}. ${shape.type === 'rect' ? '矩形' : '旧区域'} ${shape.points.length} 点`;
+        item.textContent = `${index + 1}. ${shapeLabel(shape)} ${shape.points.length} 点`;
         if (active && isRangeShape(shape)) {
           const role = document.createElement('span');
           role.className = 'shape-role';
@@ -4378,11 +4528,16 @@
     function drawShape(shape, opts = {}) {
       const isPreview = opts.preview || opts.rangePreview;
       const selected = isShapeSelected(shape) || opts.preview;
+      const styles = getComputedStyle(document.documentElement);
+      const isDraftPolygon = shape.type === 'polygon' && opts.preview;
+      const polygonPoints = isDraftPolygon && shape.previewPoint
+        ? [...shape.points, shape.previewPoint]
+        : (shape.points || []);
       ctx.save();
       ctx.lineWidth = selected ? 3 : 2;
-      ctx.strokeStyle = isPreview ? getComputedStyle(document.documentElement).getPropertyValue('--preview') : getComputedStyle(document.documentElement).getPropertyValue('--shape');
+      ctx.strokeStyle = isPreview ? styles.getPropertyValue('--preview') : styles.getPropertyValue('--shape');
       ctx.fillStyle = isPreview ? 'rgba(37, 99, 235, 0.18)' : 'rgba(225, 29, 72, 0.22)';
-      if (opts.rangePreview) ctx.setLineDash([8, 5]);
+      if (opts.rangePreview || isDraftPolygon) ctx.setLineDash([8, 5]);
       ctx.beginPath();
       if (shape.type === 'rect') {
         const [a, b] = shape.points;
@@ -4392,16 +4547,25 @@
         const h = Math.abs(b.y - a.y);
         ctx.rect(x, y, w, h);
       } else {
-        shape.points.forEach((point, index) => {
+        polygonPoints.forEach((point, index) => {
           if (index === 0) ctx.moveTo(point.x, point.y);
           else ctx.lineTo(point.x, point.y);
         });
-        if (!opts.open) ctx.closePath();
+        if (polygonPoints.length >= 3) ctx.closePath();
       }
-      ctx.fill();
+      if (shape.type === 'rect' || polygonPoints.length >= 3) ctx.fill();
       ctx.stroke();
+      if (isDraftPolygon && shape.points.length >= 3) {
+        const first = shape.points[0];
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(first.x, first.y, handleRadius() + 2, 0, Math.PI * 2);
+        ctx.strokeStyle = styles.getPropertyValue('--mint');
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
       if (selected && !opts.rangePreview) {
-        const handles = shape.type === 'rect' ? rectCorners(shape) : shape.points;
+        const handles = shape.type === 'rect' ? rectCorners(shape) : polygonHandles(shape);
         const radius = shape.type === 'rect' ? handleRadius() : 4;
         for (const point of handles) {
           ctx.beginPath();
@@ -4431,7 +4595,7 @@
       const shapes = frameShapes();
       const deleted = shapes.filter(shape => selected.has(shape.id));
       if (!deleted.length) return;
-      pushHistory(deleted.length > 1 ? '删除多个矩形' : '删除矩形');
+      pushHistory(deleted.length > 1 ? '删除多个区域' : '删除区域');
       markCurrentFileEdited();
       const next = shapes.filter(shape => !selected.has(shape.id));
       const store = fileStore();
@@ -4462,21 +4626,21 @@
     function copySelectedShapes() {
       const shapes = selectedFrameShapes();
       if (!shapes.length) {
-        statusEl.textContent = '没有选中的框';
+        statusEl.textContent = '没有选中的区域';
         return;
       }
       state.shapeClipboard = shapes.map(cloneShapeForClipboard);
       renderRangeControls();
-      statusEl.textContent = `已复制 ${state.shapeClipboard.length} 个框`;
+      statusEl.textContent = `已复制 ${state.shapeClipboard.length} 个区域`;
     }
 
     function pasteCopiedShapes() {
       if (!currentFile()) return;
       if (!state.shapeClipboard.length) {
-        statusEl.textContent = '没有可粘贴的框';
+        statusEl.textContent = '没有可粘贴的区域';
         return;
       }
-      pushHistory(state.shapeClipboard.length > 1 ? '粘贴多个矩形' : '粘贴矩形');
+      pushHistory(state.shapeClipboard.length > 1 ? '粘贴多个区域' : '粘贴区域');
       markCurrentFileEdited();
       const pasted = state.shapeClipboard.map(shape => {
         const id = uid();
@@ -4496,7 +4660,7 @@
       renderShapeList();
       renderRangeControls();
       draw();
-      statusEl.textContent = `已粘贴 ${pasted.length} 个框`;
+      statusEl.textContent = `已粘贴 ${pasted.length} 个区域`;
     }
 
     function applyWorkspaceAndManifest(workspace, manifest, options = {}) {
@@ -4549,8 +4713,72 @@
       }
     }
 
+    function startPolygonAt(point) {
+      state.drawing = {
+        id: 'draft',
+        type: 'polygon',
+        points: [{ ...point }],
+        previewPoint: { ...point },
+        effect: 'pixelate',
+        blockSize: 14
+      };
+      state.pendingSelection = null;
+      state.resizing = null;
+      statusEl.textContent = '多边形：继续点击加点，点击首点/双击/Enter 完成';
+      draw();
+    }
+
+    function addPolygonPoint(point) {
+      if (!state.drawing || state.drawing.type !== 'polygon') {
+        startPolygonAt(point);
+        return;
+      }
+      if (polygonCloseHit(point)) {
+        finishPolygonDrawing();
+        return;
+      }
+      const last = state.drawing.points[state.drawing.points.length - 1];
+      if (last && Math.hypot(last.x - point.x, last.y - point.y) < 2) return;
+      state.drawing.points.push({ ...point });
+      state.drawing.previewPoint = { ...point };
+      statusEl.textContent = `多边形：${state.drawing.points.length} 点`;
+      draw();
+    }
+
+    function finishPolygonDrawing(evt = null) {
+      if (!state.drawing || state.drawing.type !== 'polygon') return;
+      const points = state.drawing.points.map(point => ({ ...point }));
+      if (polygonLargeEnough(points)) {
+        const id = uid();
+        const shape = {
+          id,
+          trackId: id,
+          type: 'polygon',
+          points,
+          effect: 'pixelate',
+          blockSize: 14
+        };
+        pushHistory('新增多边形');
+        markCurrentFileEdited();
+        frameShapes().push(shape);
+        selectRangeShape(shape, { additive: true });
+        setDirty(true);
+        statusEl.textContent = `已新增多边形 · ${points.length} 点`;
+      } else {
+        statusEl.textContent = '多边形至少需要 3 个有效点';
+      }
+      resetCanvasInteraction();
+      releaseDrawingPointer(evt);
+      renderShapeList();
+      draw();
+    }
+
     function finishDrawing(evt) {
       if (!state.drawing) return;
+      if (state.drawing.type === 'polygon') {
+        finishPolygonDrawing(evt);
+        return;
+      }
       const [a, b] = state.drawing.points;
       if (rectLargeEnough(a, b)) {
         const id = uid();
@@ -4573,24 +4801,36 @@
     }
 
     function beginResize(handle, evt) {
-      const { shape, corner } = handle;
+      const { shape } = handle;
+      const control = handle.handle || handle.corner;
       if (!isShapeSelected(shape)) {
         selectRangeShape(shape, {
           additive: evt.ctrlKey || evt.metaKey,
           range: evt.shiftKey
         });
       }
-      state.resizing = {
-        shapeId: shape.id,
-        fixed: oppositeCorner(corner.key, shape),
-        pointerId: evt.pointerId,
-        changed: false
-      };
+      if (shape.type === 'rect') {
+        state.resizing = {
+          mode: 'rect-corner',
+          shapeId: shape.id,
+          fixed: oppositeCorner(control.key, shape),
+          pointerId: evt.pointerId,
+          changed: false
+        };
+      } else {
+        state.resizing = {
+          mode: 'polygon-point',
+          shapeId: shape.id,
+          pointIndex: control.pointIndex,
+          pointerId: evt.pointerId,
+          changed: false
+        };
+      }
       state.drawing = null;
       state.pendingSelection = null;
       state.drawingPointerId = evt.pointerId;
       canvas.setPointerCapture(evt.pointerId);
-      canvas.style.cursor = corner.cursor;
+      canvas.style.cursor = control.cursor;
       renderShapeList();
       renderRangeControls();
       draw();
@@ -4602,14 +4842,23 @@
       const shape = readFrameShapes().find(item => item.id === active.shapeId);
       if (!shape || !isRangeShape(shape)) return;
       const nextPoint = { x: point.x, y: point.y };
-      const [a, b] = shape.points;
-      if (a.x === active.fixed.x && a.y === active.fixed.y && b.x === nextPoint.x && b.y === nextPoint.y) return;
+      if (active.mode === 'rect-corner') {
+        const [a, b] = shape.points;
+        if (a.x === active.fixed.x && a.y === active.fixed.y && b.x === nextPoint.x && b.y === nextPoint.y) return;
+      } else {
+        const current = shape.points[active.pointIndex];
+        if (!current || (current.x === nextPoint.x && current.y === nextPoint.y)) return;
+      }
       if (!active.changed) {
-        pushHistory('调整矩形');
+        pushHistory(shape.type === 'polygon' ? '调整多边形' : '调整矩形');
         markCurrentFileEdited();
         active.changed = true;
       }
-      shape.points = [{ ...active.fixed }, nextPoint];
+      if (active.mode === 'rect-corner') {
+        shape.points = [{ ...active.fixed }, nextPoint];
+      } else {
+        shape.points[active.pointIndex] = nextPoint;
+      }
       draw();
     }
 
@@ -4634,6 +4883,37 @@
       const handle = pickResizeHandleAt(p);
       if (handle) {
         beginResize(handle, evt);
+        evt.preventDefault();
+        return;
+      }
+      if (!state.drawing && evt.altKey) {
+        const edge = pickPolygonEdgeAt(p);
+        if (edge && insertPolygonPoint(edge, p)) {
+          evt.preventDefault();
+          return;
+        }
+      }
+      if (state.activeTool === 'polygon') {
+        if (evt.detail > 1) {
+          evt.preventDefault();
+          return;
+        }
+        if (!state.drawing || state.drawing.type !== 'polygon') {
+          const hit = pickShapeAt(p);
+          if (hit) {
+            selectRangeShape(hit, {
+              additive: evt.ctrlKey || evt.metaKey,
+              range: evt.shiftKey
+            });
+            renderShapeList();
+            renderRangeControls();
+            draw();
+          } else {
+            startPolygonAt(p);
+          }
+        } else {
+          addPolygonPoint(p);
+        }
         evt.preventDefault();
         return;
       }
@@ -4670,7 +4950,16 @@
       }
       if (!state.drawing) {
         const handle = pickResizeHandleAt(p);
-        canvas.style.cursor = handle ? handle.corner.cursor : '';
+        const edge = evt.altKey ? pickPolygonEdgeAt(p) : null;
+        canvas.style.cursor = handle
+          ? (handle.handle || handle.corner).cursor
+          : (edge ? 'copy' : '');
+        return;
+      }
+      if (state.drawing.type === 'polygon') {
+        state.drawing.previewPoint = p;
+        canvas.style.cursor = polygonCloseHit(p) ? 'pointer' : 'crosshair';
+        draw();
         return;
       }
       state.drawing.points[1] = p;
@@ -4698,7 +4987,16 @@
         }
         return;
       }
+      if (state.drawing?.type === 'polygon') {
+        releaseDrawingPointer(evt);
+        return;
+      }
       finishDrawing(evt);
+    });
+    canvas.addEventListener('dblclick', evt => {
+      if (state.drawing?.type !== 'polygon') return;
+      evt.preventDefault();
+      finishPolygonDrawing(evt);
     });
     canvas.addEventListener('pointercancel', evt => {
       const resizeChanged = state.resizing?.changed;
@@ -4708,7 +5006,8 @@
       draw();
     });
 
-    document.getElementById('rectTool').addEventListener('click', () => setTool());
+    document.getElementById('rectTool').addEventListener('click', () => setTool('rect'));
+    document.getElementById('polygonTool').addEventListener('click', () => setTool('polygon'));
     settingsBtn.addEventListener('click', openSettings);
     settingsCloseBtn.addEventListener('click', closeSettings);
     settingsOverlay.addEventListener('click', evt => {
@@ -4894,6 +5193,25 @@
         evt.preventDefault();
         setShortcut(state.capturingShortcut, combo);
         return;
+      }
+      if (state.drawing?.type === 'polygon') {
+        if (evt.key === 'Enter') {
+          evt.preventDefault();
+          finishPolygonDrawing();
+          return;
+        }
+        if (evt.key === 'Backspace') {
+          evt.preventDefault();
+          removeLastPolygonPoint();
+          return;
+        }
+        if (evt.key === 'Escape') {
+          evt.preventDefault();
+          resetCanvasInteraction();
+          draw();
+          statusEl.textContent = '已取消多边形';
+          return;
+        }
       }
       if (!settingsOverlay.hidden) {
         if (evt.key === 'Escape') {
