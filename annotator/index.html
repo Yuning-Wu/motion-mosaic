@@ -1213,13 +1213,439 @@
     #fileList[hidden] {
       display: none;
     }
+
+    /* Motion Mosaic theme: quiet pixel charm, tuned from the app icon palette. */
+    :root {
+      --bg: #101821;
+      --panel: #f4f0e8;
+      --panel-soft: #fbf8f0;
+      --panel-tint: #eaf2ee;
+      --line: #c8d2cc;
+      --line-strong: #172033;
+      --ink: #172033;
+      --text: #172033;
+      --muted: #66727a;
+      --accent: #1b5b64;
+      --accent-strong: #123f4a;
+      --accent-weak: #d7ece7;
+      --mint: #8fd8c6;
+      --blush: #f1bfd0;
+      --lavender: #bca9ee;
+      --cream: #f3e5aa;
+      --warn: #8d6d1f;
+      --warn-bg: #fbf0c8;
+      --danger: #a93d58;
+      --danger-weak: #f5d8df;
+      --shape: #d95f8b;
+      --preview: #7b6ed6;
+      --dark-panel: #172033;
+      --dark-panel-soft: #1b2b38;
+    }
+
+    ::selection {
+      background: var(--mint);
+      color: var(--line-strong);
+    }
+
+    body {
+      background:
+        linear-gradient(90deg, rgba(143, 216, 198, 0.055) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(246, 210, 220, 0.045) 1px, transparent 1px),
+        var(--bg);
+      background-size: 18px 18px;
+      color: var(--text);
+    }
+
+    .app {
+      background: var(--bg);
+    }
+
+    aside, .right {
+      background: var(--panel);
+      border-color: #273447;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
+    }
+
+    main {
+      background:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        var(--bg);
+      background-size: 16px 16px;
+    }
+
+    .app-head {
+      min-height: 44px;
+      align-items: center;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(23, 32, 51, 0.12);
+    }
+
+    .app-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .app-logo {
+      width: 34px;
+      height: 34px;
+      image-rendering: pixelated;
+      border-radius: 5px;
+      box-shadow:
+        0 0 0 1px rgba(23, 32, 51, 0.9),
+        0 3px 0 rgba(23, 32, 51, 0.18);
+      flex: 0 0 auto;
+    }
+
+    .app-title h1 {
+      color: var(--line-strong);
+      font-size: 13px;
+      line-height: 1.15;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .app-title span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    h2 {
+      color: var(--line-strong);
+    }
+
+    label {
+      color: #5d686d;
+      font-weight: 650;
+    }
+
+    .input {
+      background: var(--panel-soft);
+      border-color: #bac8c1;
+      border-radius: 5px;
+      box-shadow: inset 0 1px 0 rgba(23, 32, 51, 0.04);
+    }
+
+    .input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(143, 216, 198, 0.45);
+      outline: 0;
+    }
+
+    input[type="checkbox"] {
+      accent-color: var(--accent);
+    }
+
+    .small-btn, .tool-btn, .icon-btn, .shortcut-key {
+      background: var(--panel-soft);
+      border-color: #bac8c1;
+      border-radius: 5px;
+      color: var(--text);
+      box-shadow:
+        inset 0 -2px 0 rgba(23, 32, 51, 0.06),
+        0 1px 0 rgba(255, 255, 255, 0.7);
+      transition: transform 80ms ease, border-color 120ms ease, background 120ms ease, color 120ms ease;
+    }
+
+    .small-btn:hover:not(:disabled),
+    .tool-btn:hover:not(:disabled),
+    .icon-btn:hover:not(:disabled),
+    .shortcut-key:hover:not(:disabled) {
+      border-color: var(--accent);
+      background: #ffffff;
+      transform: translateY(-1px);
+    }
+
+    .small-btn:active:not(:disabled),
+    .tool-btn:active:not(:disabled),
+    .icon-btn:active:not(:disabled),
+    .shortcut-key:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: inset 0 1px 0 rgba(23, 32, 51, 0.08);
+    }
+
+    .small-btn.primary,
+    .tool-btn.active,
+    .file-btn.active {
+      background: var(--accent);
+      border-color: var(--accent-strong);
+      color: #f8fffb;
+      box-shadow:
+        inset 0 -2px 0 rgba(0, 0, 0, 0.18),
+        0 2px 0 rgba(23, 32, 51, 0.16);
+    }
+
+    .small-btn.danger {
+      background: var(--danger-weak);
+      border-color: #d99aa9;
+      color: var(--danger);
+    }
+
+    .topbar, .statusbar {
+      background: var(--dark-panel);
+      border-color: #2a3b4d;
+      border-radius: 6px;
+      color: #d8e6e2;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.05),
+        0 2px 0 rgba(0, 0, 0, 0.18);
+    }
+
+    .statusbar,
+    .statusbar span {
+      color: #b6c8c4;
+    }
+
+    .frame-pill {
+      color: #e9f3ef;
+      font-weight: 700;
+    }
+
+    .frame-kind-pill {
+      background: #25384a;
+      color: var(--mint);
+      border: 1px solid rgba(143, 216, 198, 0.28);
+      border-radius: 4px;
+    }
+
+    .topbar input[type="range"] {
+      accent-color: var(--mint);
+    }
+
+    .workspace {
+      background:
+        linear-gradient(45deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%),
+        var(--dark-panel-soft);
+      background-size: 18px 18px;
+      border: 1px solid #26384b;
+      border-radius: 6px;
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.035),
+        0 10px 24px rgba(0, 0, 0, 0.18);
+    }
+
+    canvas {
+      border: 2px solid #0f172a;
+      border-radius: 3px;
+      box-shadow:
+        0 0 0 3px #26384b,
+        0 10px 0 rgba(0, 0, 0, 0.16),
+        0 18px 34px rgba(0, 0, 0, 0.26);
+    }
+
+    .panel-count, .muted, .range-hint, .source-folder-meta, .source-meta {
+      color: var(--muted);
+    }
+
+    .source-format-control .source-filter {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .source-filter {
+      background: #e3ebe7;
+      border-color: #b9c9c2;
+      border-radius: 5px;
+      box-shadow: inset 0 1px 0 rgba(23, 32, 51, 0.04);
+    }
+
+    .source-filter button {
+      border-radius: 3px;
+      color: #5c696d;
+    }
+
+    .source-filter button.active {
+      background: var(--panel-soft);
+      color: var(--accent-strong);
+      box-shadow:
+        0 0 0 1px rgba(27, 91, 100, 0.14),
+        0 2px 0 rgba(23, 32, 51, 0.08);
+    }
+
+    .source-tree-row.folder {
+      background: #ebe8dc;
+      border-color: #d6d0bf;
+      border-radius: 5px;
+    }
+
+    .source-tree-row.file {
+      border-top-color: rgba(23, 32, 51, 0.08);
+      border-radius: 4px;
+    }
+
+    .source-tree-row:hover {
+      background: #fffaf0;
+    }
+
+    .source-tree-row.current {
+      background: #e6f4ef;
+      box-shadow:
+        inset 4px 0 0 var(--accent),
+        inset 0 0 0 1px rgba(27, 91, 100, 0.18);
+    }
+
+    .source-folder-name::before {
+      border-color: var(--accent);
+      background: var(--cream);
+      border-radius: 1px;
+    }
+
+    .source-file-main::before {
+      width: 5px;
+      border-radius: 1px;
+      background: #9fb3ac;
+    }
+
+    .source-tree-row.kind-animated .source-file-main::before {
+      background: var(--lavender);
+    }
+
+    .source-tree-row.kind-static .source-file-main::before {
+      background: var(--mint);
+    }
+
+    .source-status,
+    .badge,
+    kbd {
+      border-radius: 4px;
+    }
+
+    .source-status.complete {
+      background: #dff3ea;
+      color: #14654e;
+    }
+
+    .source-status.changed {
+      background: var(--warn-bg);
+      color: var(--warn);
+    }
+
+    .source-status.warn {
+      background: #f6dfd4;
+      color: #a64b25;
+    }
+
+    .export-line,
+    .export-progress,
+    .export-summary,
+    .group {
+      border-top-color: rgba(23, 32, 51, 0.11);
+    }
+
+    .export-progress-bar,
+    .range-track {
+      background: #d7dedb;
+      border-radius: 3px;
+    }
+
+    .export-progress-fill,
+    .range-selection {
+      background: var(--accent);
+      border-radius: 3px;
+    }
+
+    .range-target-segment {
+      background: rgba(188, 169, 238, 0.72);
+      border-radius: 3px;
+    }
+
+    .range-handle {
+      background: var(--panel-soft);
+      border-color: var(--accent);
+      border-radius: 4px;
+      box-shadow:
+        0 0 0 1px rgba(23, 32, 51, 0.18),
+        0 3px 0 rgba(23, 32, 51, 0.18);
+    }
+
+    .range-handle::after {
+      color: var(--accent-strong);
+    }
+
+    .range-current {
+      background: var(--preview);
+    }
+
+    .range-source {
+      background: var(--cream);
+      box-shadow: 0 0 0 1px rgba(23, 32, 51, 0.36);
+    }
+
+    .range-frame-strip {
+      background: #e2e8e4;
+      border-color: #bccbc4;
+      border-radius: 5px;
+    }
+
+    .range-frame {
+      background: #cbd8d2;
+      border-radius: 1px;
+    }
+
+    .range-frame.in-range {
+      background: var(--mint);
+    }
+
+    .range-frame.will-apply::before {
+      background: var(--preview);
+      border-radius: 1px;
+    }
+
+    .range-frame.has-shapes::after {
+      background: var(--shape);
+      border-radius: 1px;
+    }
+
+    .range-metric,
+    .shape-item,
+    .shortcut-key,
+    kbd {
+      background: var(--panel-soft);
+      border-color: #c6d0ca;
+    }
+
+    .range-metric {
+      border-radius: 5px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    }
+
+    .shape-item {
+      border-radius: 5px;
+    }
+
+    .shape-item.active {
+      border-color: var(--preview);
+      background: #eee9ff;
+      box-shadow: inset 4px 0 0 var(--preview);
+    }
+
+    .shape-role,
+    .shortcut-key.capturing {
+      color: var(--preview);
+    }
+
+    .shortcut-key.capturing {
+      background: #eee9ff;
+      border-color: var(--preview);
+    }
   </style>
 </head>
 <body>
   <div class="app">
     <aside>
-      <div class="panel-head">
-        <h1>素材</h1>
+      <div class="panel-head app-head">
+        <div class="app-title">
+          <img class="app-logo" src="/assets/motion-mosaic-icon.png" alt="" aria-hidden="true">
+          <div>
+            <h1>Motion Mosaic</h1>
+            <span>素材</span>
+          </div>
+        </div>
         <span id="directoryMeta" class="panel-count"></span>
       </div>
       <div class="source-field">
@@ -1265,8 +1691,8 @@
           </div>
           <div id="sourceKindFilter" class="source-filter" role="group" aria-label="类型筛选">
             <button type="button" class="active" data-kind="all">全部</button>
-            <button type="button" data-kind="animated">动态图</button>
-            <button type="button" data-kind="static">静态图</button>
+            <button type="button" data-kind="animated">动图</button>
+            <button type="button" data-kind="static">静图</button>
           </div>
         </div>
         <div id="sourceFileList" class="source-list"></div>
