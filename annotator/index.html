@@ -1633,6 +1633,98 @@
       background: #eee9ff;
       border-color: var(--preview);
     }
+
+    .source-actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .source-actions .wide,
+    .source-format-control,
+    #exportSelectedBtn {
+      grid-column: 1 / -1;
+    }
+
+    .source-commands {
+      min-width: 52px;
+    }
+
+    .range-readout {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .range-metric span {
+      font-size: 10px;
+    }
+
+    .range-metric strong {
+      font-size: 12px;
+    }
+
+    .shortcut-details {
+      display: block;
+    }
+
+    .shortcut-details summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      list-style: none;
+      cursor: pointer;
+      color: var(--line-strong);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .shortcut-details summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .shortcut-details summary::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-right: 2px solid var(--accent);
+      border-bottom: 2px solid var(--accent);
+      transform: rotate(-45deg);
+      transition: transform 140ms ease;
+      flex: 0 0 auto;
+    }
+
+    .shortcut-details[open] summary::before {
+      transform: rotate(45deg);
+    }
+
+    .shortcut-details summary span {
+      flex: 1;
+    }
+
+    .shortcut-details summary .small-btn {
+      min-height: 28px;
+      padding: 0 8px;
+    }
+
+    .shortcut-list {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .shortcut-item {
+      min-height: 34px;
+    }
+
+    .shortcut-key {
+      min-height: 24px;
+      font-size: 11px;
+    }
+
+    .shortcut-item span:last-child {
+      font-size: 11px;
+      line-height: 1.2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -1666,12 +1758,11 @@
         <button id="saveDirBtn" class="small-btn primary">应用目录</button>
         <button id="refreshBtn" class="small-btn">刷新列表</button>
         <button id="selectAllSourcesBtn" class="small-btn">勾选全部</button>
-        <button id="extractSelectedBtn" class="small-btn">导入待处理</button>
         <div class="source-format-control">
           <span>动图格式</span>
           <div id="animatedFormatControl" class="source-filter" role="group" aria-label="动图导出格式">
-            <button type="button" class="active" data-format="avif">AVIF</button>
-            <button type="button" data-format="webp">WebP</button>
+            <button type="button" data-format="avif">AVIF</button>
+            <button type="button" class="active" data-format="webp">WebP</button>
             <button type="button" data-format="webm">WebM</button>
           </div>
         </div>
@@ -1739,17 +1830,17 @@
 
       <div class="group">
         <div class="section-head">
-          <h2>范围</h2>
+          <h2>帧范围</h2>
           <span id="rangeHint" class="range-hint">先画矩形</span>
         </div>
         <div class="range-panel">
           <div class="range-readout">
             <div class="range-metric source-metric">
-              <span>当前矩形</span>
+              <span>源</span>
               <strong id="rangeSourceText">第 1 帧</strong>
             </div>
             <div class="range-metric">
-              <span>作用帧</span>
+              <span>目标</span>
               <strong id="rangeSpanText">1-1</strong>
             </div>
             <div class="range-metric">
@@ -1784,13 +1875,13 @@
         </div>
       </div>
 
-      <div class="group">
-        <div class="section-head">
-          <h2>快捷键</h2>
-          <button id="resetShortcutsBtn" class="small-btn">重置</button>
-        </div>
+      <details class="group shortcut-details">
+        <summary>
+          <span>快捷键</span>
+          <button id="resetShortcutsBtn" class="small-btn" type="button">重置</button>
+        </summary>
         <div id="shortcutList" class="shortcut-list"></div>
-      </div>
+      </details>
 
       <div class="group">
         <div class="section-head">
@@ -1913,10 +2004,13 @@
       sourceCollapsedDirs: new Set(),
       sourceFilter: 'all',
       sourceKindFilter: 'all',
-      animatedFormat: 'avif',
+      animatedFormat: 'webp',
       shapeClipboard: [],
       shortcuts: { ...DEFAULT_SHORTCUTS },
-      capturingShortcut: null
+      capturingShortcut: null,
+      autoImporting: false,
+      autoImportTimer: null,
+      autoImportFailures: new Set()
     };
     const RECT_MIN_SIZE = 4;
 
@@ -3159,6 +3253,8 @@
           method: 'POST',
           body: JSON.stringify({ activeFiles: [...nextActiveIds].sort(), activeOnly: true })
         });
+        state.autoImportFailures.clear();
+        scheduleAutoImport(120);
       } catch (error) {
         applyActiveFilesToWorkspace(previousActiveIds);
         applyWorkspaceAndManifest(state.workspace, manifestFromWorkspace());
@@ -3238,6 +3334,8 @@
           await updateActiveFiles(new Set((data.workspace.sourceFiles || []).map(source => source.id)));
           statusEl.textContent = '目录已应用，已选择当前图片';
         } else {
+          state.autoImportFailures.clear();
+          scheduleAutoImport(120);
           statusEl.textContent = '目录已应用';
         }
       } finally {
@@ -3265,13 +3363,14 @@
       }
     }
 
-    async function extractAssets(assetIds, overwrite = false) {
+    async function extractAssets(assetIds, overwrite = false, options = {}) {
       const ids = assetIds.filter(Boolean);
       if (!ids.length) {
         statusEl.textContent = '没有勾选文件';
         return;
       }
-      setBusy(true, overwrite ? '刷新源图...' : '导入源图...');
+      const action = overwrite ? '刷新源图' : '导入源图';
+      setBusy(true, options.auto ? `自动${action}...` : `${action}...`);
       try {
         const data = await apiJson('/api/extract', {
           method: 'POST',
@@ -3279,11 +3378,67 @@
         });
         const firstReady = data.results.find(item => ['imported', 'skipped'].includes(item.status));
         applyWorkspaceAndManifest(data.workspace, data.manifest, { preferredId: firstReady?.id });
-        const summary = data.results.map(item => `${item.id}:${item.status}`).join(' ');
-        statusEl.textContent = summary || '导入完成';
+        const okCount = data.results.filter(item => ['imported', 'skipped'].includes(item.status)).length;
+        const failed = data.results.filter(item => !['imported', 'skipped'].includes(item.status));
+        for (const item of failed) state.autoImportFailures.add(item.id);
+        if (options.auto) {
+          statusEl.textContent = failed.length
+            ? `自动导入完成 ${okCount} 个，失败 ${failed.length} 个`
+            : `自动导入完成 ${okCount} 个`;
+        } else {
+          const summary = data.results.map(item => `${item.id}:${item.status}`).join(' ');
+          statusEl.textContent = summary || '导入完成';
+        }
+        return data;
       } finally {
         setBusy(false);
       }
+    }
+
+    function pendingAutoImportSources(sourceList = state.workspace?.sourceFiles || []) {
+      const activeIds = activeIdsFromWorkspace();
+      return sourceList.filter(source =>
+        source &&
+        source.active &&
+        activeIds.has(source.id) &&
+        (!source.imported || source.stale) &&
+        !state.autoImportFailures.has(source.id)
+      );
+    }
+
+    function scheduleAutoImport(delay = 250) {
+      clearTimeout(state.autoImportTimer);
+      if (!state.workspace || state.autoImporting) return;
+      state.autoImportTimer = setTimeout(() => {
+        runAutoImport().catch(showError);
+      }, delay);
+    }
+
+    async function runAutoImport() {
+      if (state.autoImporting || state.busy || !state.workspace) return;
+      const pendingSources = pendingAutoImportSources();
+      if (!pendingSources.length) return;
+      state.autoImporting = true;
+      try {
+        await extractAssets(
+          pendingSources.map(source => source.id),
+          pendingSources.some(source => source.stale),
+          { auto: true }
+        );
+      } finally {
+        state.autoImporting = false;
+      }
+      if (pendingAutoImportSources().length) scheduleAutoImport(1200);
+    }
+
+    async function ensureSourcesReady(sourceList) {
+      const pendingSources = sourceList.filter(source => source && (!source.imported || source.stale));
+      if (!pendingSources.length) return;
+      await extractAssets(
+        pendingSources.map(source => source.id),
+        pendingSources.some(source => source.stale),
+        { auto: true }
+      );
     }
 
     function basenamePath(path) {
@@ -3360,8 +3515,14 @@
     function sourceStatus(source) {
       const annotated = countAnnotatedFrames(source.id);
       const completion = fileCompletionLabel(source.id);
+      if (state.autoImportFailures.has(source.id)) {
+        return { text: '导入失败', className: 'warn' };
+      }
+      if (source.active && !source.imported) {
+        return { text: '自动导入', className: 'changed' };
+      }
       if (source.imported && source.stale) {
-        return { text: '待刷新', className: 'warn' };
+        return { text: '自动刷新', className: 'warn' };
       }
       if (source.imported && completion) {
         return { text: completion, className: 'complete' };
@@ -3493,14 +3654,22 @@
       const current = job?.current || '';
       const percent = total ? Math.min(100, Math.round(done / total * 100)) : 0;
       const elapsed = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+      const format = String(job?.animatedFormat || state.animatedFormat || '').toUpperCase();
+      const title = job?.status === 'queued' ? '等待导出' : `正在压缩${format ? ` · ${format}` : ''}`;
+      const detail = current
+        ? `当前：${basenamePath(current)}`
+        : (job?.status === 'queued' ? '等待压缩器启动' : '压缩器启动中');
+      const avifHint = String(job?.animatedFormat || state.animatedFormat || '').toLowerCase() === 'avif' && elapsed >= 12
+        ? ' · AVIF 较慢，追求速度可切 WebP'
+        : '';
       exportStatus.innerHTML = `
         <div class="export-progress">
           <div class="export-progress-head">
-            <strong>${job?.status === 'queued' ? '等待导出' : '正在导出'}</strong>
+            <strong>${title}</strong>
             <span>${done}/${total || '-'}</span>
           </div>
           <div class="export-progress-bar"><div class="export-progress-fill" style="width:${percent}%"></div></div>
-          <div class="muted">${current ? `当前：${basenamePath(current)}` : '准备压缩'} · ${elapsed}s</div>
+          <div class="muted">${detail} · ${elapsed}s${avifHint}</div>
         </div>
       `;
     }
@@ -3571,13 +3740,17 @@
 
     function sourceExportBlocker(source) {
       if (!source) return '没有可导出的图片';
-      if (!source.imported) return '这张图还未导入源图';
-      if (source.stale) return '源图已变化，请先刷新源图';
+      if (!source.imported) return '自动导入失败，无法导出';
+      if (source.stale) return '自动刷新失败，无法导出';
       return '';
     }
 
     async function exportSingleSource(sourceId) {
-      const source = (state.workspace?.sourceFiles || []).find(item => item.id === sourceId);
+      let source = (state.workspace?.sourceFiles || []).find(item => item.id === sourceId);
+      if (source && (!source.imported || source.stale)) {
+        await ensureSourcesReady([source]);
+        source = (state.workspace?.sourceFiles || []).find(item => item.id === sourceId);
+      }
       const blocker = sourceExportBlocker(source);
       if (blocker) {
         statusEl.textContent = blocker;
@@ -3592,8 +3765,11 @@
 
     async function exportSelectedAssets() {
       const activeIds = activeIdsFromWorkspace();
-      const activeSources = (state.workspace?.sourceFiles || []).filter(source => activeIds.has(source.id));
-      const completedSources = activeSources.filter(source => isFileComplete(source.id));
+      let activeSources = (state.workspace?.sourceFiles || []).filter(source => activeIds.has(source.id));
+      let completedSources = activeSources.filter(source => isFileComplete(source.id));
+      await ensureSourcesReady(completedSources);
+      activeSources = (state.workspace?.sourceFiles || []).filter(source => activeIds.has(source.id));
+      completedSources = activeSources.filter(source => isFileComplete(source.id));
       const exportSources = completedSources.filter(source => source.imported && !source.stale);
       const ids = exportSources.map(source => source.id);
       if (!ids.length) {
@@ -3602,9 +3778,9 @@
         } else if (!completedSources.length) {
           statusEl.textContent = '没有已完成文件';
         } else if (completedSources.some(source => source.stale)) {
-          statusEl.textContent = '已完成文件源图已变化，请先刷新源图';
+          statusEl.textContent = '自动刷新失败，无法导出';
         } else if (completedSources.some(source => !source.imported)) {
-          statusEl.textContent = '已完成文件还未导入源图';
+          statusEl.textContent = '自动导入失败，无法导出';
         } else {
           statusEl.textContent = '没有可导出的已完成文件';
         }
@@ -3649,19 +3825,15 @@
       const item = document.createElement('div');
       const fileIndex = fileIndexForSource(source.id);
       const isCurrent = fileIndex >= 0 && fileIndex === state.activeFile;
-      const canOpenOrImport = fileIndex >= 0 || !source.imported;
-      item.className = `source-tree-row file source-item kind-${source.kind}${canOpenOrImport ? ' selectable' : ''}${isCurrent ? ' current' : ''}`;
+      const canOpen = fileIndex >= 0;
+      item.className = `source-tree-row file source-item kind-${source.kind}${canOpen ? ' selectable' : ''}${isCurrent ? ' current' : ''}`;
       item.style.setProperty('--tree-indent', `${depth * 14}px`);
       item.dataset.sourceId = source.id;
       item.title = source.relativePath || source.name || source.id;
-      if (canOpenOrImport) {
+      if (canOpen) {
         item.addEventListener('click', evt => {
           if (evt.target.closest('button, input')) return;
-          if (fileIndex >= 0) {
-            selectFile(fileIndex);
-          } else {
-            extractAssets([source.id], false).catch(showError);
-          }
+          selectFile(fileIndex);
         });
       }
 
@@ -3670,7 +3842,7 @@
       checkbox.className = 'source-tree-check';
       checkbox.checked = source.active;
       checkbox.disabled = state.busy;
-      checkbox.title = '勾选后参与批量导入，导出时仍只导出已完成文件';
+      checkbox.title = '勾选后自动导入，导出时仍只导出已完成文件';
       checkbox.addEventListener('click', evt => evt.stopPropagation());
       checkbox.addEventListener('change', () => {
         const next = activeIdsFromWorkspace();
@@ -3703,17 +3875,6 @@
       const commands = document.createElement('div');
       commands.className = 'source-commands';
 
-      const importButton = document.createElement('button');
-      importButton.className = `small-btn source-command${(!source.imported || source.stale) ? ' needed' : ''}`;
-      importButton.type = 'button';
-      importButton.disabled = state.busy;
-      importButton.textContent = source.stale ? '刷新' : (source.imported ? '重导' : '导入');
-      importButton.title = source.stale ? '源文件已变化，刷新工作帧' : (source.imported ? '重新导入这张源图' : '导入这张源图到工作台');
-      importButton.addEventListener('click', evt => {
-        evt.stopPropagation();
-        extractAssets([source.id], source.imported || source.stale).catch(showError);
-      });
-
       const exportButton = document.createElement('button');
       exportButton.className = 'small-btn source-command';
       exportButton.type = 'button';
@@ -3725,7 +3886,7 @@
         exportSingleSource(source.id).catch(showError);
       });
 
-      commands.append(importButton, exportButton);
+      commands.append(exportButton);
       item.append(checkbox, info, commands);
       return item;
     }
@@ -4221,7 +4382,9 @@
     });
 
     document.getElementById('rectTool').addEventListener('click', () => setTool());
-    resetShortcutsBtn.addEventListener('click', () => {
+    resetShortcutsBtn.addEventListener('click', evt => {
+      evt.preventDefault();
+      evt.stopPropagation();
       state.shortcuts = { ...DEFAULT_SHORTCUTS };
       state.capturingShortcut = null;
       saveShortcuts();
@@ -4326,7 +4489,7 @@
     animatedFormatControl.addEventListener('click', evt => {
       const button = evt.target.closest('button[data-format]');
       if (!button) return;
-      state.animatedFormat = button.dataset.format || 'avif';
+      state.animatedFormat = button.dataset.format || 'webp';
       renderSourceFilter();
       statusEl.textContent = `动图将导出为 ${state.animatedFormat.toUpperCase()}`;
     });
@@ -4339,20 +4502,6 @@
       updateActiveFiles(allActive
         ? new Set()
         : new Set(state.workspace.sourceFiles.map(source => source.id))
-      ).catch(showError);
-    });
-    document.getElementById('extractSelectedBtn').addEventListener('click', () => {
-      const sources = [...activeIdsFromWorkspace()]
-        .map(id => state.workspace?.sourceFiles.find(item => item.id === id))
-        .filter(Boolean);
-      const pendingSources = sources.filter(source => !source.imported || source.stale);
-      if (!pendingSources.length) {
-        statusEl.textContent = '勾选文件都已导入，源图没有变化';
-        return;
-      }
-      extractAssets(
-        pendingSources.map(source => source.id),
-        pendingSources.some(source => source.stale)
       ).catch(showError);
     });
     document.getElementById('exportSelectedBtn').addEventListener('click', () => {
@@ -4483,9 +4632,11 @@
       state.history = [];
       state.saveError = false;
       state.saving = false;
+      state.autoImportFailures.clear();
       clearPendingAutoSave();
       applyWorkspaceAndManifest(workspace, manifest);
       setDirty(false);
+      scheduleAutoImport(200);
     }
 
     loadShortcuts();

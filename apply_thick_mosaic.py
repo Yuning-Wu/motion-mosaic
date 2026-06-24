@@ -79,7 +79,7 @@ ANIMATED_AVIF_CRF_CANDIDATES = [
     60,
     63,
 ]
-DEFAULT_ANIMATED_FORMAT = "avif"
+DEFAULT_ANIMATED_FORMAT = "webp"
 ANIMATED_OUTPUT_FORMATS = {"avif", "webp", "webm"}
 
 

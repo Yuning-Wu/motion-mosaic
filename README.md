@@ -5,9 +5,10 @@ Motion Mosaic is a local mosaic annotation and export tool for static images and
 ## Features
 
 - Annotate mosaic rectangles on static images and animated sources.
+- Automatically import and refresh selected source files.
 - Review animated assets frame by frame.
 - Export static images as WebP.
-- Export animated assets as AVIF by default, with WebP and WebM also available.
+- Export animated assets as WebP by default, with AVIF and WebM also available.
 - Run in a browser, an app-style Edge window, or a Windows executable.
 - Keep all annotations, extracted frames, and exports local.
 
@@ -79,6 +80,16 @@ Run it:
 ```
 
 The executable starts the local service and opens the app-style window. It keeps `data/`, `exports/`, and `inputs/` next to the executable.
+
+Recommended update flow after code changes:
+
+```powershell
+git pull
+.\build_exe.ps1 -SkipInstall
+.\MotionMosaic.exe
+```
+
+Close any running `MotionMosaic.exe` window before rebuilding, because Windows may keep the executable locked while it is running.
 
 ## Configuration
 
