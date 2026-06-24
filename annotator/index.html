@@ -1895,6 +1895,363 @@
       margin: 0;
       padding-left: calc(42% + 12px);
     }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      clip-path: inset(50%);
+    }
+
+    .panel-count,
+    .source-folder-meta:empty,
+    .range-frame-strip[hidden] {
+      display: none !important;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 34px 30px minmax(0, 1fr) 30px;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+    }
+
+    .timeline-panel {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .timeline-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .frame-pill {
+      min-width: auto;
+      font-size: 12px;
+      color: #c9d8d4;
+    }
+
+    .frame-kind-pill {
+      min-height: 20px;
+      border-radius: 4px;
+      font-size: 11px;
+      padding: 0 7px;
+    }
+
+    .play-btn,
+    .frame-nav {
+      width: 30px;
+      min-height: 30px;
+      border-radius: 999px;
+      background: #203140;
+      border-color: rgba(143, 216, 198, 0.28);
+      color: #dff7ef;
+      box-shadow: none;
+      font-size: 17px;
+      line-height: 1;
+    }
+
+    .play-btn {
+      width: 34px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .play-btn:hover:not(:disabled),
+    .frame-nav:hover:not(:disabled) {
+      background: #274456;
+      border-color: var(--mint);
+      transform: none;
+    }
+
+    .frame-timeline {
+      height: 34px;
+      margin: 0;
+      padding: 0 7px;
+    }
+
+    .frame-timeline .range-track {
+      top: 14px;
+      height: 8px;
+      overflow: visible;
+      background: #263746;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    }
+
+    .range-progress {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 0;
+      border-radius: 999px;
+      background: rgba(143, 216, 198, 0.2);
+      pointer-events: none;
+    }
+
+    .frame-timeline .range-selection,
+    .frame-timeline .range-target-segment {
+      top: 0;
+      bottom: 0;
+      min-width: 8px;
+      border-radius: 999px;
+      background: rgba(143, 216, 198, 0.72);
+      box-shadow: 0 0 0 1px rgba(143, 216, 198, 0.18);
+    }
+
+    .frame-timeline .range-target-segment {
+      background: rgba(188, 169, 238, 0.62);
+    }
+
+    .frame-timeline .range-current {
+      top: 11px;
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      background: #f8fbf7;
+      border: 3px solid var(--preview);
+      transform: translateX(-7px);
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.28);
+      z-index: 5;
+    }
+
+    .frame-timeline .range-source {
+      top: 25px;
+      width: 5px;
+      height: 7px;
+      border-radius: 1px;
+      background: var(--cream);
+      transform: translateX(-2px);
+      opacity: 0.9;
+      z-index: 4;
+    }
+
+    .frame-timeline .range-handle {
+      top: 4px;
+      width: 22px;
+      height: 16px;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      transform: translateX(-11px);
+      z-index: 6;
+    }
+
+    .frame-timeline .range-start-handle {
+      top: 1px;
+    }
+
+    .frame-timeline .range-end-handle {
+      top: 18px;
+    }
+
+    .frame-timeline .range-handle::after {
+      content: none;
+    }
+
+    .frame-timeline .range-handle::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.28));
+    }
+
+    .frame-timeline .range-start-handle::before {
+      border-top: 7px solid transparent;
+      border-bottom: 7px solid transparent;
+      border-left: 10px solid var(--mint);
+    }
+
+    .frame-timeline .range-end-handle::before {
+      border-top: 7px solid transparent;
+      border-bottom: 7px solid transparent;
+      border-right: 10px solid var(--blush);
+    }
+
+    .topbar.static .frame-timeline {
+      opacity: 0.45;
+    }
+
+    .right .panel-head {
+      align-items: center;
+    }
+
+    .settings-btn {
+      width: auto;
+      min-height: 30px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 9px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .settings-icon {
+      position: relative;
+      width: 15px;
+      height: 13px;
+      display: inline-block;
+      background:
+        linear-gradient(currentColor, currentColor) 0 1px / 15px 1.5px no-repeat,
+        linear-gradient(currentColor, currentColor) 0 6px / 15px 1.5px no-repeat,
+        linear-gradient(currentColor, currentColor) 0 11px / 15px 1.5px no-repeat;
+      color: currentColor;
+    }
+
+    .settings-icon::before,
+    .settings-icon::after {
+      content: "";
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 999px;
+      background: currentColor;
+      top: 0;
+    }
+
+    .settings-icon::before {
+      left: 3px;
+      box-shadow: 7px 10px 0 currentColor;
+    }
+
+    .settings-icon::after {
+      right: 2px;
+      top: 5px;
+    }
+
+    .tool-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .tool-btn {
+      min-height: 38px;
+      padding: 0 8px;
+      font-size: 14px;
+      font-weight: 750;
+    }
+
+    .action-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    #clearBtn {
+      display: none;
+    }
+
+    #deleteBtn {
+      grid-column: 1 / -1;
+    }
+
+    .range-readout {
+      display: block;
+    }
+
+    .range-summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 3px 8px;
+      align-items: baseline;
+      padding: 8px 9px;
+      border: 1px solid #c6d0ca;
+      border-radius: 6px;
+      background: var(--panel-soft);
+    }
+
+    .range-summary strong,
+    .range-summary span,
+    .range-summary small {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .range-summary strong {
+      color: var(--line-strong);
+      font-size: 13px;
+    }
+
+    .range-summary span {
+      color: var(--accent-strong);
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .range-summary small {
+      grid-column: 1 / -1;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .range-actions {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    #addRangeSegmentBtn,
+    #setRangeStartBtn,
+    #setRangeEndBtn,
+    #copyShapesBtn,
+    #pasteShapesBtn {
+      display: none;
+    }
+
+    .range-commit-actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .motion-preview-card {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(23, 32, 51, 0.11);
+    }
+
+    .motion-preview-frame {
+      display: grid;
+      place-items: center;
+      min-height: 138px;
+      aspect-ratio: 16 / 10;
+      border: 1px solid #c6d0ca;
+      border-radius: 6px;
+      background:
+        linear-gradient(45deg, rgba(23, 32, 51, 0.045) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(23, 32, 51, 0.045) 25%, transparent 25%),
+        #e8eee9;
+      background-size: 14px 14px;
+      overflow: hidden;
+    }
+
+    .motion-preview-frame img {
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      image-rendering: auto;
+    }
+
+    .source-actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .export-setting-summary,
+    #exportSelectedBtn {
+      grid-column: 1 / -1;
+    }
   </style>
 </head>
 <body>
@@ -1957,11 +2314,26 @@
 
     <main>
       <div id="topbar" class="topbar">
-        <button id="prevBtn" class="icon-btn" title="上一帧" aria-label="上一帧">←</button>
-        <input id="frameSlider" type="range" min="0" value="0">
-        <button id="nextBtn" class="icon-btn" title="下一帧" aria-label="下一帧">→</button>
-        <span id="frameText" class="frame-pill">0 / 0</span>
-        <span id="frameKindText" class="frame-kind-pill">图片</span>
+        <button id="playBtn" class="icon-btn play-btn" title="播放/暂停（空格）" aria-label="播放/暂停">▶</button>
+        <button id="prevBtn" class="icon-btn frame-nav" title="上一帧" aria-label="上一帧">‹</button>
+        <div class="timeline-panel">
+          <div class="timeline-meta">
+            <span id="frameKindText" class="frame-kind-pill">图片</span>
+            <span id="frameText" class="frame-pill">0 / 0</span>
+          </div>
+          <div id="rangeTimeline" class="range-timeline frame-timeline">
+            <div class="range-track">
+              <div id="rangeProgress" class="range-progress"></div>
+              <div id="rangeSelection" class="range-selection"></div>
+            </div>
+            <div id="rangeSource" class="range-source"></div>
+            <div id="rangeCurrent" class="range-current"></div>
+            <button id="rangeStartHandle" class="range-handle range-start-handle" type="button" aria-label="范围起点"></button>
+            <button id="rangeEndHandle" class="range-handle range-end-handle" type="button" aria-label="范围终点"></button>
+          </div>
+        </div>
+        <button id="nextBtn" class="icon-btn frame-nav" title="下一帧" aria-label="下一帧">›</button>
+        <input id="frameSlider" class="sr-only" type="range" min="0" value="0" tabindex="-1" aria-hidden="true">
       </div>
 
       <div class="workspace">
@@ -1978,7 +2350,8 @@
       <div class="panel-head">
         <h2>编辑</h2>
         <button id="settingsBtn" class="icon-btn settings-btn" type="button" aria-label="设置" title="设置" aria-expanded="false">
-          <span class="pixel-gear" aria-hidden="true"></span>
+          <span class="settings-icon" aria-hidden="true"></span>
+          <span>设置</span>
         </button>
       </div>
       <div class="tool-grid">
@@ -2002,29 +2375,13 @@
         </div>
         <div class="range-panel">
           <div class="range-readout">
-            <div class="range-metric source-metric">
-              <span>源</span>
-              <strong id="rangeSourceText">第 1 帧</strong>
-            </div>
-            <div class="range-metric">
-              <span>目标</span>
+            <div class="range-summary">
               <strong id="rangeSpanText">1-1</strong>
-            </div>
-            <div class="range-metric">
-              <span>帧数</span>
-              <strong id="rangeCountText">1 帧</strong>
+              <span id="rangeCountText">1 帧</span>
+              <small id="rangeSourceText">源 1 · 0 区域</small>
             </div>
           </div>
-          <div id="rangeTimeline" class="range-timeline">
-            <div class="range-track">
-              <div id="rangeSelection" class="range-selection"></div>
-            </div>
-            <div id="rangeSource" class="range-source"></div>
-            <div id="rangeCurrent" class="range-current"></div>
-            <button id="rangeStartHandle" class="range-handle" data-label="起" type="button" aria-label="范围起点"></button>
-            <button id="rangeEndHandle" class="range-handle" data-label="止" type="button" aria-label="范围终点"></button>
-          </div>
-          <div id="rangeFrameStrip" class="range-frame-strip"></div>
+          <div id="rangeFrameStrip" class="range-frame-strip" hidden></div>
           <div class="range-actions">
             <button id="setRangeSourceBtn" class="small-btn">选本帧区域</button>
             <button id="addRangeSegmentBtn" class="small-btn">加入这段</button>
@@ -2039,6 +2396,16 @@
             <button id="copyShapesBtn" class="small-btn">复制区域</button>
             <button id="pasteShapesBtn" class="small-btn">粘贴到本帧</button>
           </div>
+        </div>
+      </div>
+
+      <div class="motion-preview-card">
+        <div class="section-head">
+          <h2>预览</h2>
+          <span id="previewHint" class="range-hint">静态</span>
+        </div>
+        <div class="motion-preview-frame">
+          <img id="motionPreview" alt="">
         </div>
       </div>
 
@@ -2124,6 +2491,7 @@
     const selectAllSourcesBtn = document.getElementById('selectAllSourcesBtn');
     const fileList = document.getElementById('fileList');
     const topbar = document.getElementById('topbar');
+    const playBtn = document.getElementById('playBtn');
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
     const frameSlider = document.getElementById('frameSlider');
@@ -2133,6 +2501,7 @@
     const saveState = document.getElementById('saveState');
     const shapeList = document.getElementById('shapeList');
     const rangeTimeline = document.getElementById('rangeTimeline');
+    const rangeProgress = document.getElementById('rangeProgress');
     const rangeSelection = document.getElementById('rangeSelection');
     const rangeSource = document.getElementById('rangeSource');
     const rangeCurrent = document.getElementById('rangeCurrent');
@@ -2153,6 +2522,8 @@
     const pasteShapesBtn = document.getElementById('pasteShapesBtn');
     const shortcutList = document.getElementById('shortcutList');
     const resetShortcutsBtn = document.getElementById('resetShortcutsBtn');
+    const motionPreview = document.getElementById('motionPreview');
+    const previewHint = document.getElementById('previewHint');
     const HISTORY_LIMIT = 40;
     const AUTO_SAVE_DELAY = 300;
     const SHORTCUT_STORAGE_KEY = 'motionMosaicShortcuts.v1';
@@ -2224,6 +2595,8 @@
       rangeFrameStripSignature: '',
       activeRangeHandle: null,
       frameSliderDragging: false,
+      playing: false,
+      playTimer: null,
       drawingPointerId: null,
       scrollSourceIntoView: false,
       sourceCollapsedDirs: new Set(),
@@ -2449,6 +2822,59 @@
       return !file || file.frameCount <= 1;
     }
 
+    function frameDuration(file = currentFile(), frame = state.frame) {
+      const durations = Array.isArray(file?.durations) ? file.durations : [];
+      const duration = Number(durations[clampFrameIndex(frame)]);
+      return Number.isFinite(duration) ? Math.max(20, duration) : 100;
+    }
+
+    function updatePlayControls() {
+      const file = currentFile();
+      const disabled = !file || isSingleFrame(file) || state.busy;
+      playBtn.disabled = disabled;
+      playBtn.textContent = state.playing ? 'Ⅱ' : '▶';
+      playBtn.setAttribute('aria-label', state.playing ? '暂停' : '播放');
+      playBtn.title = state.playing ? '暂停（空格）' : '播放（空格）';
+      topbar.classList.toggle('playing', state.playing);
+      previewHint.textContent = !file || isSingleFrame(file) ? '静态' : (state.playing ? '播放中' : '空格播放');
+    }
+
+    function stopPlayback() {
+      if (state.playTimer) {
+        clearTimeout(state.playTimer);
+        state.playTimer = null;
+      }
+      state.playing = false;
+      updatePlayControls();
+    }
+
+    function schedulePlaybackTick() {
+      if (!state.playing) return;
+      const file = currentFile();
+      if (!file || isSingleFrame(file)) {
+        stopPlayback();
+        return;
+      }
+      state.playTimer = setTimeout(() => {
+        if (!state.playing) return;
+        setFrame((state.frame + 1) % file.frameCount, { fromPlayback: true });
+        schedulePlaybackTick();
+      }, frameDuration(file, state.frame));
+    }
+
+    function startPlayback() {
+      const file = currentFile();
+      if (!file || isSingleFrame(file) || state.busy) return;
+      state.playing = true;
+      updatePlayControls();
+      schedulePlaybackTick();
+    }
+
+    function togglePlayback() {
+      if (state.playing) stopPlayback();
+      else startPlayback();
+    }
+
     function fileKindText(file = currentFile()) {
       if (!file) return '图片';
       return isSingleFrame(file) ? '静态图' : '动图';
@@ -2462,6 +2888,8 @@
       nextBtn.disabled = disabled;
       topbar.classList.toggle('static', !file || isSingleFrame(file));
       frameKindText.textContent = fileKindText(file);
+      if (disabled && state.playing) stopPlayback();
+      else updatePlayControls();
     }
 
     function fileIndexForSource(sourceId) {
@@ -3105,12 +3533,14 @@
 
     function setBusy(value, message = '') {
       state.busy = value;
+      if (value) stopPlayback();
       if (message) statusEl.textContent = message;
       document.querySelectorAll('button').forEach(button => {
         if (button.id !== 'saveBtn') button.disabled = value;
       });
       if (value) {
         frameSlider.disabled = true;
+        playBtn.disabled = true;
         prevBtn.disabled = true;
         nextBtn.disabled = true;
       } else {
@@ -3188,9 +3618,20 @@
       ];
     }
 
+    function currentRangeSegments() {
+      const file = currentFile();
+      if (!file) return [];
+      const start = clampFrameIndex(state.rangeStart);
+      const end = clampFrameIndex(state.rangeEnd);
+      if (start <= end) return [{ start, end }];
+      return [
+        { start, end: file.frameCount - 1 },
+        { start: 0, end }
+      ];
+    }
+
     function currentRangeSegment() {
-      const [start, end] = normalizedRange();
-      return { start, end };
+      return currentRangeSegments()[0] || { start: 0, end: 0 };
     }
 
     function mergeRangeSegments(segments) {
@@ -3217,7 +3658,7 @@
     function targetRangeSegments() {
       return state.rangeSegments.length
         ? state.rangeSegments
-        : [currentRangeSegment()];
+        : currentRangeSegments();
     }
 
     function targetFrameIndexes() {
@@ -3250,7 +3691,7 @@
     }
 
     function addCurrentRangeSegment() {
-      state.rangeSegments = mergeRangeSegments([...state.rangeSegments, currentRangeSegment()]);
+      state.rangeSegments = mergeRangeSegments([...state.rangeSegments, ...currentRangeSegments()]);
       renderRangeControls();
       draw();
     }
@@ -3410,6 +3851,7 @@
         rangeSelection.classList.remove('draft');
         rangeSelection.style.left = '0%';
         rangeSelection.style.width = '0%';
+        rangeProgress.style.width = '0%';
         rangeSource.style.left = '0%';
         rangeCurrent.style.left = '0%';
         rangeStartHandle.style.left = '0%';
@@ -3426,31 +3868,29 @@
       state.rangeStart = clampFrameIndex(state.rangeStart);
       state.rangeEnd = clampFrameIndex(state.rangeEnd);
       state.rangeSegments = mergeRangeSegments(state.rangeSegments);
-      const [start, end] = normalizedRange();
-      const startPct = percentForFrame(start);
-      const endPct = percentForFrame(end);
-      const explicitSegments = state.rangeSegments.length ? targetRangeSegments() : [];
       const targetSegments = targetRangeSegments();
       const targetCount = targetFrameIndexes().length;
       const track = rangeTimeline.querySelector('.range-track');
       track.querySelectorAll('.range-target-segment').forEach(element => element.remove());
-      explicitSegments.forEach(segment => {
+      const [primarySegment, ...extraSegments] = targetSegments;
+      extraSegments.forEach(segment => {
         const marker = document.createElement('div');
         marker.className = 'range-target-segment';
         marker.style.left = `${percentForFrame(segment.start)}%`;
         marker.style.width = `${Math.max(0, percentForFrame(segment.end) - percentForFrame(segment.start))}%`;
         track.insertBefore(marker, rangeSelection);
       });
-      rangeSelection.classList.toggle('draft', Boolean(explicitSegments.length));
-      rangeSelection.style.left = `${startPct}%`;
-      rangeSelection.style.width = `${Math.max(0, endPct - startPct)}%`;
+      rangeSelection.classList.remove('draft');
+      rangeSelection.style.left = `${percentForFrame(primarySegment?.start || 0)}%`;
+      rangeSelection.style.width = `${Math.max(0, percentForFrame(primarySegment?.end || 0) - percentForFrame(primarySegment?.start || 0))}%`;
+      rangeProgress.style.width = `${percentForFrame(state.frame)}%`;
       rangeSource.style.left = `${percentForFrame(state.rangeSource)}%`;
       rangeCurrent.style.left = `${percentForFrame(state.frame)}%`;
       rangeStartHandle.style.left = `${percentForFrame(state.rangeStart)}%`;
       rangeEndHandle.style.left = `${percentForFrame(state.rangeEnd)}%`;
       const sourceCount = rangeSourceShapes().length;
-      rangeSourceText.textContent = `第 ${state.rangeSource + 1} 帧 · ${sourceCount} 区域`;
-      rangeSpanText.textContent = formatRangeSegments(targetSegments);
+      rangeSourceText.textContent = `源 ${state.rangeSource + 1} · ${sourceCount} 区域`;
+      rangeSpanText.textContent = `目标 ${formatRangeSegments(targetSegments)}`;
       rangeCountText.textContent = `${targetCount} 帧`;
       applyRangeBtn.disabled = disabled || !sourceCount || !targetCount;
       removeRangeBtn.disabled = disabled || !sourceCount || !targetCount;
@@ -3459,9 +3899,9 @@
         rangeHint.textContent = '点选一个区域';
       } else if (!sourceCount) {
         rangeHint.textContent = '画一个区域';
-      } else if (explicitSegments.length > 1) {
-        rangeHint.textContent = `${explicitSegments.length} 段目标帧`;
-      } else if (explicitSegments.length) {
+      } else if (state.rangeSegments.length > 1 || targetSegments.length > 1) {
+        rangeHint.textContent = `${targetSegments.length} 段目标帧`;
+      } else if (state.rangeSegments.length) {
         rangeHint.textContent = '已锁定目标帧';
       } else if (rangePreviewShapes().length) {
         rangeHint.textContent = '蓝色虚线是预览';
@@ -3471,7 +3911,7 @@
         rangeHint.textContent = '调整起止后应用';
       }
       if (singleFrame) {
-        rangeSourceText.textContent = '静态图 · 1 帧';
+        rangeSourceText.textContent = '静态图';
         rangeSpanText.textContent = '无需范围';
         rangeCountText.textContent = '-';
         rangeHint.textContent = '静态图不用设范围';
@@ -3570,12 +4010,15 @@
       statusEl.textContent = `已从 ${formatRangeSegments()} 删除 ${removed} 个区域`;
     }
 
-    function setFrame(frame) {
+    function setFrame(frame, options = {}) {
       const file = currentFile();
       if (!file) return;
+      if (!options.fromPlayback && state.playing) stopPlayback();
       state.frame = Math.max(0, Math.min(file.frameCount - 1, frame));
       resetCanvasInteraction();
       frameSlider.value = state.frame;
+      frameText.textContent = `${state.frame + 1} / ${file.frameCount}`;
+      frameKindText.textContent = fileKindText(file);
       if (!state.rangeSourceLocked) {
         state.rangeSource = state.frame;
       }
@@ -3591,6 +4034,7 @@
     }
 
     function selectFile(index, options = {}) {
+      stopPlayback();
       if (!state.files.length) {
         clearCanvas('没有帧');
         return;
@@ -3607,6 +4051,7 @@
       frameSlider.disabled = singleFrame;
       frameSlider.max = file.frameCount - 1;
       frameSlider.value = 0;
+      playBtn.disabled = singleFrame;
       prevBtn.disabled = singleFrame;
       nextBtn.disabled = singleFrame;
       topbar.classList.toggle('static', singleFrame);
@@ -3630,6 +4075,7 @@
     }
 
     function clearCanvas(message) {
+      stopPlayback();
       state.imageLoadSeq += 1;
       canvas.width = 1;
       canvas.height = 1;
@@ -3637,11 +4083,14 @@
       resetCanvasInteraction();
       clearSelection();
       frameSlider.disabled = true;
+      playBtn.disabled = true;
       prevBtn.disabled = true;
       nextBtn.disabled = true;
       topbar.classList.add('static');
       frameText.textContent = '0 / 0';
       frameKindText.textContent = '图片';
+      motionPreview.removeAttribute('src');
+      previewHint.textContent = '静态';
       shapeList.innerHTML = '<div class="muted">没有可编辑帧</div>';
       statusEl.textContent = message;
       renderRangeControls();
@@ -3663,6 +4112,8 @@
       statusEl.textContent = `${file.name}`;
       frameText.textContent = `${state.frame + 1} / ${file.frameCount}`;
       frameKindText.textContent = fileKindText(file);
+      previewHint.textContent = isSingleFrame(file) ? '静态' : (state.playing ? '播放中' : '空格播放');
+      motionPreview.src = frameUrl;
       topbar.classList.toggle('static', isSingleFrame(file));
       const image = new Image();
       image.decoding = 'async';
@@ -3718,6 +4169,8 @@
           name: record.sourceName || record.name,
           kind: record.kind,
           frameCount: record.frameCount,
+          durations: record.durations || Array.from({ length: record.frameCount }, () => 100),
+          loop: Number(record.loop || 0),
           frames: record.frames || [],
           annotatedFrameCount: record.annotatedFrameCount,
           missingSource: record.missingSource
@@ -4307,19 +4760,10 @@
     function renderDirectoryMeta() {
       if (!state.workspace) return;
       const sourceCount = state.workspace.sourceFiles.length;
-      const importedCount = state.workspace.sourceFiles.filter(source => source.imported).length;
-      const staleCount = state.workspace.sourceFiles.filter(source => source.stale).length;
-      const completedCount = state.workspace.sourceFiles.filter(source => isFileComplete(source.id)).length;
       const activeCount = state.workspace.sourceFiles.filter(source => source.active).length;
       const allActive = sourceCount > 0 && activeCount === sourceCount;
       renderSourceFilter();
-      directoryMeta.textContent = [
-        `图 ${sourceCount}`,
-        `已导入 ${importedCount}`,
-        staleCount ? `待刷新 ${staleCount}` : '',
-        `完成 ${completedCount}`,
-        `勾选 ${activeCount}`
-      ].filter(Boolean).join(' · ');
+      directoryMeta.textContent = '';
       selectAllSourcesBtn.textContent = allActive ? '取消全选' : '勾选全部';
       selectAllSourcesBtn.title = allActive ? '取消勾选全部图片' : '勾选当前目录下全部图片';
     }
@@ -4459,12 +4903,12 @@
       name.textContent = node.name;
       const meta = document.createElement('div');
       meta.className = 'source-folder-meta';
-      meta.textContent = `${node.sourceCount} 个 · 已导入 ${node.importedCount} · 完成 ${node.completedCount}`;
+      meta.textContent = '';
       main.append(name, meta);
 
       const count = document.createElement('div');
       count.className = 'source-folder-meta';
-      count.textContent = `${node.activeCount}/${node.sourceCount}`;
+      count.textContent = '';
 
       row.append(caret, checkbox, main, count);
       fragment.appendChild(row);
@@ -5059,6 +5503,7 @@
     });
     document.getElementById('prevBtn').addEventListener('click', () => setFrame(state.frame - 1));
     document.getElementById('nextBtn').addEventListener('click', () => setFrame(state.frame + 1));
+    playBtn.addEventListener('click', togglePlayback);
     document.getElementById('cancelBtn').addEventListener('click', () => {
       resetCanvasInteraction();
       releaseDrawingPointer();
@@ -5085,7 +5530,7 @@
       if (evt.target === rangeStartHandle) state.activeRangeHandle = 'start';
       else if (evt.target === rangeEndHandle) state.activeRangeHandle = 'end';
       else {
-        setNearestRangeHandle(evt);
+        setFrame(frameFromTimelineEvent(evt));
         return;
       }
       evt.preventDefault();
@@ -5253,11 +5698,14 @@
           evt.preventDefault();
           closeSettings();
         }
-        if (evt.target instanceof Element && evt.target.closest('#settingsOverlay')) {
-          return;
-        }
+        return;
       }
       if (evt.target instanceof HTMLInputElement) return;
+      if (evt.code === 'Space' && !state.drawing) {
+        evt.preventDefault();
+        togglePlayback();
+        return;
+      }
       if ((evt.ctrlKey || evt.metaKey) && !evt.shiftKey && evt.key.toLowerCase() === 'c') {
         if (!hasTextSelection() && selectedFrameShapes().length) {
           evt.preventDefault();

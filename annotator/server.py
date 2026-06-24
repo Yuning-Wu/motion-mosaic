@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import subprocess
 import sys
 import threading
 import time
@@ -28,6 +27,7 @@ from app_paths import (
     resource_path,
     stored_project_output_dir,
 )
+from subprocess_helpers import run_without_console
 
 ROOT = Path(__file__).resolve().parent
 WORK_DIR = project_dir()
@@ -150,7 +150,7 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
         "MOTION_MOSAIC_PICKER_TITLE": title,
         "MOTION_MOSAIC_PICKER_INITIAL_DIR": str(picker_initial_dir(initial_dir)),
     }
-    result = subprocess.run(
+    result = run_without_console(
         ["powershell.exe", "-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-Command", script],
         check=True,
         capture_output=True,
@@ -263,16 +263,60 @@ def read_source_meta(asset_id: str) -> dict:
     return data if isinstance(data, dict) else {}
 
 
-def write_source_meta(asset_id: str, source: Path, frame_count_written: int, kind: str) -> None:
+def write_source_meta(
+    asset_id: str,
+    source: Path,
+    frame_count_written: int,
+    kind: str,
+    durations: list[int] | None = None,
+    loop: int = 0,
+) -> None:
     path = source_meta_path(asset_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     data = {
         **source_signature(source),
         "frameCount": frame_count_written,
         "kind": kind,
+        "durations": normalize_frame_durations(durations, frame_count_written),
+        "loop": loop,
         "loadedAt": time.time(),
     }
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def normalize_frame_durations(durations: list[int] | None, frame_count_value: int) -> list[int]:
+    values = []
+    if not isinstance(durations, list):
+        durations = []
+    for duration in durations:
+        try:
+            value = int(duration)
+        except (TypeError, ValueError):
+            value = 100
+        values.append(max(20, value))
+    if len(values) < frame_count_value:
+        values.extend([values[-1] if values else 100] * (frame_count_value - len(values)))
+    return values[:frame_count_value]
+
+
+def source_timing(source: Path, frame_count_value: int) -> tuple[list[int], int]:
+    try:
+        import apply_thick_mosaic  # noqa: PLC0415
+
+        return apply_thick_mosaic.source_timing(source, frame_count_value)
+    except Exception:
+        pass
+
+    durations: list[int] = []
+    loop = 0
+    try:
+        with Image.open(source) as image:
+            loop = int(image.info.get("loop", 0) or 0)
+            if getattr(image, "is_animated", False) and getattr(image, "n_frames", 1) > 1:
+                durations = [int(frame.info.get("duration") or 100) for frame in ImageSequence.Iterator(image)]
+    except Exception:
+        durations = []
+    return normalize_frame_durations(durations, frame_count_value), loop
 
 
 def frame_source_stale(asset_id: str, source: Path | None) -> bool:
@@ -396,6 +440,20 @@ def frame_record(
     source = source_map.get(asset_id)
     source_name = relative_source_name(source, source_dir) if source else ""
     version = frame_asset_version(asset_id, asset_dir)
+    meta = read_source_meta(asset_id)
+    raw_durations = meta.get("durations") if isinstance(meta.get("durations"), list) else []
+    loop = int(meta.get("loop") or 0)
+    if source and len(raw_durations) != len(frame_files) and (not meta or not frame_source_stale(asset_id, source)):
+        raw_durations, loop = source_timing(source, len(frame_files))
+        write_source_meta(
+            asset_id,
+            source,
+            len(frame_files),
+            cached_source_kind(asset_id, source),
+            durations=raw_durations,
+            loop=loop,
+        )
+    durations = normalize_frame_durations(raw_durations, len(frame_files))
     return {
         "id": asset_id,
         "name": asset_id,
@@ -405,6 +463,8 @@ def frame_record(
         "missingSource": source is None,
         "sourceStale": frame_source_stale(asset_id, source),
         "frameCount": len(frame_files),
+        "durations": durations,
+        "loop": loop,
         "annotatedFrameCount": annotated_frame_count(asset_id, annotations),
         "active": asset_id in active_files if active_files_configured else True,
         "frames": [f"/frame/{quote(asset_id, safe='/')}/{quote(frame.name)}?v={version}" for frame in frame_files],
@@ -455,6 +515,8 @@ def manifest_from_workspace(workspace: dict) -> dict:
                 "name": record["sourceName"] or record["name"],
                 "kind": record["kind"],
                 "frameCount": record["frameCount"],
+                "durations": record.get("durations") or [100] * record["frameCount"],
+                "loop": int(record.get("loop") or 0),
                 "frames": record["frames"],
                 "annotatedFrameCount": record["annotatedFrameCount"],
                 "missingSource": record["missingSource"],
@@ -530,7 +592,8 @@ def extract_frames(source: Path, source_dir: Path, overwrite: bool) -> dict:
             frame_count_written = 1
 
     kind = "animated" if is_animated else "static"
-    write_source_meta(asset_id, source, frame_count_written, kind)
+    durations, loop = source_timing(source, frame_count_written)
+    write_source_meta(asset_id, source, frame_count_written, kind, durations=durations, loop=loop)
 
     annotations = load_annotations()
     annotations.setdefault("files", {}).setdefault(asset_id, {"frames": {}})
@@ -958,5 +1021,17 @@ def run_server(host: str = "127.0.0.1", port: int = 8788) -> None:
     serve(app, host=host, port=port, threads=8)
 
 
+def env_host() -> str:
+    return os.environ.get("MOTION_MOSAIC_HOST") or os.environ.get("REMASK_ANNOTATOR_HOST", "127.0.0.1")
+
+
+def env_port() -> int:
+    raw = os.environ.get("MOTION_MOSAIC_PORT") or os.environ.get("REMASK_ANNOTATOR_PORT", "8788")
+    try:
+        return int(raw)
+    except ValueError as exc:
+        raise ValueError(f"MOTION_MOSAIC_PORT must be an integer, got {raw!r}") from exc
+
+
 if __name__ == "__main__":
-    run_server()
+    run_server(env_host(), env_port())

@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
-import subprocess
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter, ImageSequence
 
-from app_paths import project_dir, project_exports_dir, resolve_project_output_dir, resolve_project_path
+from app_paths import project_dir, project_exports_dir, resolve_project_output_dir, resolve_project_path, resource_path
+from subprocess_helpers import run_without_console
 
 WORK_DIR = project_dir()
 PROJECT_DIR = WORK_DIR
@@ -20,8 +21,6 @@ FRAMES_DIR = DATA_DIR / "frames"
 DEFAULT_OUTPUT_DIR = project_exports_dir()
 OUTPUT_DIR = DEFAULT_OUTPUT_DIR
 ANNOTATIONS_PATH = DATA_DIR / "annotations.json"
-WEBPMUX = Path(r"D:\Software\DevTool\Scoop\shims\webpmux.exe")
-FFMPEG = Path(r"D:\Software\DevTool\Scoop\shims\ffmpeg.exe")
 
 ANIMATED_SOURCE_SUFFIXES = {".gif", ".webp"}
 STATIC_SOURCE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff"}
@@ -81,6 +80,33 @@ ANIMATED_AVIF_CRF_CANDIDATES = [
 ]
 DEFAULT_ANIMATED_FORMAT = "avif"
 ANIMATED_OUTPUT_FORMATS = {"avif", "webp", "webm"}
+
+
+def executable_name(name: str) -> str:
+    return f"{name}.exe" if os.name == "nt" else name
+
+
+def executable_path(name: str, env_var: str) -> str | None:
+    override = os.environ.get(env_var)
+    if override:
+        override_path = Path(override).expanduser()
+        if override_path.is_file():
+            return str(override_path)
+
+    filename = executable_name(name)
+    candidates = [
+        project_dir() / "bin" / filename,
+        resource_path("bin", filename),
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return str(candidate)
+
+    return shutil.which(name)
+
+
+def webpmux_path() -> str | None:
+    return executable_path("webpmux", "MOTION_MOSAIC_WEBPMUX")
 
 
 def source_dir() -> Path:
@@ -183,25 +209,46 @@ def gif_durations(source: Path) -> list[int]:
         return [int(frame.info.get("duration") or 100) for frame in ImageSequence.Iterator(image)]
 
 
+def normalize_frame_durations(durations: list[int] | None, frame_count: int) -> list[int]:
+    values: list[int] = []
+    for duration in durations or []:
+        try:
+            value = int(duration)
+        except (TypeError, ValueError):
+            value = 100
+        values.append(max(20, value))
+    if len(values) < frame_count:
+        values.extend([values[-1] if values else 100] * (frame_count - len(values)))
+    return values[:frame_count]
+
+
 def webp_durations(source: Path) -> list[int]:
-    if WEBPMUX.exists():
-        result = subprocess.run(
-            [str(WEBPMUX), "-info", str(source)],
-            check=True,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-        durations = []
-        for line in result.stdout.splitlines():
-            if not re.match(r"\s*\d+:", line):
-                continue
-            parts = line.split()
-            if len(parts) >= 7:
-                durations.append(int(parts[6]))
-        if durations:
-            return durations
+    webpmux = webpmux_path()
+    if webpmux:
+        try:
+            result = run_without_console(
+                [webpmux, "-info", str(source)],
+                check=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+            )
+        except Exception:
+            result = None
+        if result is not None:
+            durations = []
+            for line in result.stdout.splitlines():
+                if not re.match(r"\s*\d+:", line):
+                    continue
+                parts = line.split()
+                if len(parts) >= 7:
+                    try:
+                        durations.append(int(parts[6]))
+                    except ValueError:
+                        continue
+            if durations:
+                return durations
     return gif_durations(source)
 
 
@@ -213,9 +260,7 @@ def source_timing(source: Path, frame_count: int) -> tuple[list[int], int]:
         return [100] * frame_count, loop
 
     durations = webp_durations(source) if source.suffix.lower() == ".webp" else gif_durations(source)
-    if len(durations) < frame_count:
-        durations.extend([durations[-1] if durations else 100] * (frame_count - len(durations)))
-    return durations[:frame_count], loop
+    return normalize_frame_durations(durations, frame_count), loop
 
 
 def thick_block_size(width: int, height: int) -> int:
@@ -455,7 +500,7 @@ def save_avif(
 
         manifest = temp_dir / "frames.txt"
         write_concat_manifest(frame_paths, durations, manifest)
-        subprocess.run(
+        run_without_console(
             [
                 ffmpeg_path(),
                 "-hide_banner",
@@ -555,12 +600,10 @@ def save_compressed_animated_avif(
 
 
 def ffmpeg_path() -> str:
-    if FFMPEG.exists():
-        return str(FFMPEG)
-    found = shutil.which("ffmpeg")
+    found = executable_path("ffmpeg", "MOTION_MOSAIC_FFMPEG")
     if found:
         return found
-    raise FileNotFoundError("ffmpeg is required to export animated files as WebM")
+    raise FileNotFoundError("ffmpeg is required to export animated files as AVIF or WebM")
 
 
 def even_size(size: tuple[int, int]) -> tuple[int, int]:
@@ -657,7 +700,7 @@ def save_webm(
         ]
         if has_alpha:
             args[-3:-3] = ["-auto-alt-ref", "0"]
-        subprocess.run(args, check=True)
+        run_without_console(args, check=True)
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 

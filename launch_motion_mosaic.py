@@ -64,6 +64,14 @@ def show_launch_error(context: str) -> None:
         pass
 
 
+def fallback_to_browser_window(context: str, keep_process: bool) -> None:
+    log_launcher_error(context)
+    try:
+        open_browser_window(keep_process)
+    except Exception:
+        show_launch_error(context)
+
+
 def open_app_window(keep_process: bool) -> None:
     if os.environ.get("MOTION_MOSAIC_OPEN_BROWSER") == "1" or os.environ.get("REMASK_ANNOTATOR_OPEN_BROWSER") == "1":
         open_browser_window(keep_process)
@@ -72,9 +80,7 @@ def open_app_window(keep_process: bool) -> None:
     try:
         import webview
     except Exception:
-        context = "Native desktop window dependency failed to load."
-        log_launcher_error(context)
-        show_launch_error(context)
+        fallback_to_browser_window("Native desktop window dependency failed to load.", keep_process)
         return
 
     root = project_dir()
@@ -99,9 +105,7 @@ def open_app_window(keep_process: bool) -> None:
             icon=str(icon_path) if icon_path.is_file() else None,
         )
     except Exception:
-        context = "Native desktop window failed to start."
-        log_launcher_error(context)
-        show_launch_error(context)
+        fallback_to_browser_window("Native desktop window failed to start.", keep_process)
 
 
 def keep_running() -> None:
