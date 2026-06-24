@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import os
 import socket
-import subprocess
+import traceback
 import threading
 import time
 import webbrowser
-from pathlib import Path
-from shutil import which
+from datetime import datetime
 
 from app_paths import project_dir
 from annotator.server import run_server
@@ -15,6 +14,7 @@ from annotator.server import run_server
 HOST = os.environ.get("MOTION_MOSAIC_HOST") or os.environ.get("REMASK_ANNOTATOR_HOST", "127.0.0.1")
 PORT = int(os.environ.get("MOTION_MOSAIC_PORT") or os.environ.get("REMASK_ANNOTATOR_PORT", "8788"))
 URL = f"http://{HOST}:{PORT}/"
+APP_TITLE = "Motion Mosaic"
 
 
 def service_is_running() -> bool:
@@ -34,53 +34,74 @@ def wait_for_service(timeout_seconds: float = 20.0) -> None:
     raise RuntimeError(f"Service did not start at {URL}")
 
 
-def open_app_window() -> None:
+def open_browser_window(keep_process: bool) -> None:
+    webbrowser.open(URL)
+    if keep_process:
+        keep_running()
+
+
+def log_launcher_error(context: str) -> None:
+    log_path = project_dir() / "data" / "launcher.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("a", encoding="utf-8") as file:
+        file.write(f"[{datetime.now().isoformat(timespec='seconds')}] {context}\n")
+        file.write(traceback.format_exc())
+        file.write("\n")
+
+
+def show_launch_error(context: str) -> None:
+    try:
+        import ctypes
+
+        message = (
+            f"{context}\n\n"
+            f"Web UI is still available at {URL} if the local service is running.\n"
+            "Set MOTION_MOSAIC_OPEN_BROWSER=1 only when you explicitly want browser mode.\n\n"
+            "Details were written to data\\launcher.log."
+        )
+        ctypes.windll.user32.MessageBoxW(None, message, APP_TITLE, 0x10)
+    except Exception:
+        pass
+
+
+def open_app_window(keep_process: bool) -> None:
     if os.environ.get("MOTION_MOSAIC_OPEN_BROWSER") == "1" or os.environ.get("REMASK_ANNOTATOR_OPEN_BROWSER") == "1":
-        webbrowser.open(URL)
+        open_browser_window(keep_process)
         return
 
-    edge_path = find_edge()
-    if not edge_path:
-        webbrowser.open(URL)
-        keep_running()
+    try:
+        import webview
+    except Exception:
+        context = "Native desktop window dependency failed to load."
+        log_launcher_error(context)
+        show_launch_error(context)
         return
 
-    profile_dir = project_dir() / "data" / "edge-app-profile"
+    root = project_dir()
+    profile_dir = root / "data" / "webview-profile"
     profile_dir.mkdir(parents=True, exist_ok=True)
-    process = subprocess.Popen(
-        [
-            str(edge_path),
-            f"--app={URL}",
-            f"--user-data-dir={profile_dir}",
-            "--no-first-run",
-            "--disable-features=Translate",
-            "--window-size=1280,840",
-        ]
+    icon_path = root / "assets" / "motion-mosaic-icon.png"
+
+    webview.create_window(
+        APP_TITLE,
+        URL,
+        width=1280,
+        height=840,
+        min_size=(960, 680),
+        text_select=True,
+        background_color="#f4f8f6",
     )
-    exit_code = process.wait()
-    if exit_code != 0:
-        webbrowser.open(URL)
-        keep_running()
-
-
-def find_edge() -> Path | None:
-    found = which("msedge")
-    if found:
-        return Path(found)
-
-    candidates = [
-        os.environ.get("MOTION_MOSAIC_EDGE") or os.environ.get("REMASK_ANNOTATOR_EDGE"),
-        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
-        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-        str(Path.home() / r"AppData\Local\Microsoft\Edge\Application\msedge.exe"),
-    ]
-    for candidate in candidates:
-        if not candidate:
-            continue
-        path = Path(candidate).expanduser()
-        if path.is_file():
-            return path
-    return None
+    try:
+        webview.start(
+            gui="edgechromium",
+            private_mode=False,
+            storage_path=str(profile_dir),
+            icon=str(icon_path) if icon_path.is_file() else None,
+        )
+    except Exception:
+        context = "Native desktop window failed to start."
+        log_launcher_error(context)
+        show_launch_error(context)
 
 
 def keep_running() -> None:
@@ -94,12 +115,16 @@ def main() -> None:
         run_server(HOST, PORT)
         return
 
+    started_service = False
     if not service_is_running():
         threading.Thread(target=run_server, args=(HOST, PORT), daemon=True).start()
         wait_for_service()
+        started_service = True
 
     if os.environ.get("MOTION_MOSAIC_NO_WINDOW") != "1" and os.environ.get("REMASK_ANNOTATOR_NO_WINDOW") != "1":
-        open_app_window()
+        open_app_window(started_service)
+    elif started_service:
+        keep_running()
 
 
 if __name__ == "__main__":

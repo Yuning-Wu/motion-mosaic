@@ -25,6 +25,9 @@ python -m PyInstaller `
     --specpath "$Root\build\pyinstaller" `
     --add-data "$Root\annotator\index.html;annotator" `
     --add-data "$Root\assets;assets" `
+    --collect-data webview `
+    --collect-binaries webview `
+    --copy-metadata pywebview `
     --exclude-module numpy `
     --exclude-module cv2 `
     --exclude-module tkinter `
@@ -33,9 +36,6 @@ python -m PyInstaller `
     --exclude-module PIL.AvifImagePlugin `
     --exclude-module PIL.ImageTk `
     --exclude-module PIL._imagingtk `
-    --exclude-module ssl `
-    --exclude-module _ssl `
-    --exclude-module _hashlib `
     --exclude-module cryptography `
     --exclude-module bcrypt `
     --exclude-module flask `
@@ -54,6 +54,12 @@ python -m PyInstaller `
     --exclude-module wheel `
     --hidden-import apply_thick_mosaic `
     --hidden-import bottle `
+    --hidden-import webview `
+    --hidden-import webview.platforms.winforms `
+    --hidden-import webview.platforms.edgechromium `
+    --hidden-import clr_loader `
+    --hidden-import pythonnet `
+    --hidden-import proxy_tools `
     --hidden-import waitress `
     "$Root\launch_motion_mosaic.py"
 
