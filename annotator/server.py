@@ -681,6 +681,26 @@ def render_job_snapshot(job_id: str) -> dict | None:
         return json.loads(json.dumps(job, ensure_ascii=False)) if job else None
 
 
+def render_job_output_path(job_id: str, result_index: int) -> Path | None:
+    """Resolve one rendered output without exposing arbitrary local files."""
+    job = render_job_snapshot(job_id)
+    if not job:
+        return None
+    results = job.get("results") or []
+    if result_index < 0 or result_index >= len(results):
+        return None
+    result = results[result_index]
+    if result.get("status") != "rendered" or not result.get("output"):
+        return None
+    try:
+        output_root = Path(job["outputDir"]).resolve()
+        output = Path(result["output"]).resolve()
+        output.relative_to(output_root)
+    except (KeyError, OSError, RuntimeError, ValueError):
+        return None
+    return output if output.is_file() else None
+
+
 def run_render_job(
     job_id: str,
     asset_ids: list[str],
@@ -840,6 +860,13 @@ def create_app() -> Bottle:
         if not job:
             return json_response({"ok": False, "error": "render job not found"}, 404)
         return json_response({"ok": True, "job": job})
+
+    @app.get("/api/render/file/<job_id>/<result_index:int>")
+    def api_render_file(job_id: str, result_index: int):
+        output = render_job_output_path(job_id, result_index)
+        if not output:
+            return json_response({"ok": False, "error": "rendered file not found"}, 404)
+        return file_response(output, "private, max-age=3600")
 
     @app.get("/frame/<rel:path>")
     def frame(rel: str):

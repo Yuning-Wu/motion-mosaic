@@ -9,9 +9,13 @@ It is designed as a single-user local desktop utility. The built-in HTTP server 
 - Annotate mosaic rectangles and polygons on static images and animated sources.
 - Automatically import and refresh selected source files.
 - Review animated assets frame by frame.
+- Scrub the timeline to jump directly to the matching animation frame.
+- Keep the full image fitted in the workspace, with Ctrl + mouse wheel zoom when needed.
+- Apply the current frame's selected mosaic regions to a target range in one click.
 - Export static images as WebP.
 - Export animated assets as AVIF by default, with WebP and WebM also available.
 - Configure export format, automatic target-size compression, and shortcuts from the settings panel.
+- Preview the final rendered output directly after export.
 - Run in a native desktop window or through the local web UI.
 - Keep all annotations, extracted frames, and exports local.
 
