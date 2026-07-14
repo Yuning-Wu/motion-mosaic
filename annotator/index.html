@@ -165,20 +165,32 @@
     }
 
     .workspace {
-      display: grid;
-      place-items: center;
+      display: block;
       min-height: 0;
-      overflow: auto;
+      overflow: hidden;
       background: #e8edf3;
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 12px;
     }
 
+    .workspace.zoomed {
+      overflow: auto;
+    }
+
+    .canvas-stage {
+      display: grid;
+      place-items: center;
+      width: 100%;
+      height: 100%;
+      min-width: 0;
+      min-height: 0;
+    }
+
     canvas {
       display: block;
-      max-width: 100%;
-      max-height: calc(100vh - 150px);
+      max-width: none;
+      max-height: none;
       background: #111827;
       box-shadow: 0 1px 5px rgba(15, 23, 42, 0.16);
       cursor: crosshair;
@@ -212,6 +224,13 @@
     .range-panel {
       display: grid;
       gap: 10px;
+    }
+
+    .range-help {
+      margin: 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
     }
 
     .range-readout {
@@ -699,7 +718,8 @@
     }
 
     canvas {
-      max-height: calc(100vh - 130px);
+      max-width: none;
+      max-height: none;
       border-radius: 4px;
       box-shadow: 0 10px 28px rgba(21, 28, 35, 0.16);
     }
@@ -819,6 +839,58 @@
 
     .export-failure {
       color: var(--danger);
+    }
+
+    .export-previews {
+      display: grid;
+      gap: 8px;
+      border-top: 1px solid #edf0ed;
+      padding-top: 8px;
+    }
+
+    .export-previews > strong {
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .export-preview-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 7px;
+    }
+
+    .export-preview-item {
+      min-width: 0;
+      display: grid;
+      gap: 5px;
+      margin: 0;
+      padding: 5px;
+      border: 1px solid #c6d0ca;
+      border-radius: 6px;
+      background: var(--panel-soft);
+    }
+
+    .export-preview-media {
+      width: 100%;
+      max-height: 260px;
+      aspect-ratio: 16 / 10;
+      display: block;
+      object-fit: contain;
+      border-radius: 4px;
+      background:
+        linear-gradient(45deg, rgba(23, 32, 51, 0.05) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(23, 32, 51, 0.05) 25%, transparent 25%),
+        #e8eee9;
+      background-size: 12px 12px;
+    }
+
+    .export-preview-item figcaption {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 11px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .source-list {
@@ -2376,6 +2448,14 @@
     #setRangeSourceBtn {
       grid-column: 1 / -1;
     }
+
+    #applyRangeBtn {
+      display: none;
+    }
+
+    #removeRangeBtn {
+      grid-column: 1 / -1;
+    }
   </style>
 </head>
 <body>
@@ -2459,13 +2539,15 @@
         <input id="frameSlider" class="sr-only" type="range" min="0" value="0" tabindex="-1" aria-hidden="true">
       </div>
 
-      <div class="workspace">
-        <canvas id="canvas" width="1" height="1"></canvas>
+      <div id="workspace" class="workspace" title="按住 Ctrl 并滚动鼠标滚轮可放大或还原">
+        <div id="canvasStage" class="canvas-stage">
+          <canvas id="canvas" width="1" height="1"></canvas>
+        </div>
       </div>
 
       <div class="statusbar">
         <span id="status">加载中</span>
-        <span id="saveState">未保存</span>
+        <span><span id="zoomState">适应窗口 · Ctrl+滚轮缩放</span> · <span id="saveState">未保存</span></span>
       </div>
     </main>
 
@@ -2501,7 +2583,7 @@
 
       <div class="group">
         <div class="section-head">
-          <h2>范围</h2>
+          <h2>批量应用</h2>
           <span id="rangeHint" class="range-hint">先画区域</span>
         </div>
         <div class="range-panel">
@@ -2512,9 +2594,10 @@
               <small id="rangeSourceText">源 1 · 0 区域</small>
             </div>
           </div>
+          <p class="range-help">先选中本帧的打码区域，再拖动上方时间轴选择目标帧，或直接点“全片”。最后点击下面的主按钮即可立即应用。</p>
           <div id="rangeFrameStrip" class="range-frame-strip" hidden></div>
           <div class="range-actions">
-            <button id="setRangeSourceBtn" class="small-btn">用本帧</button>
+            <button id="setRangeSourceBtn" class="small-btn primary" title="把当前帧选中的打码区域立即复制到上方显示的目标帧">把本帧区域应用到目标帧</button>
             <button id="addRangeSegmentBtn" class="small-btn">加入这段</button>
             <button id="setRangeStartBtn" class="small-btn">设为开始</button>
             <button id="setRangeEndBtn" class="small-btn">设为结束</button>
@@ -2522,8 +2605,8 @@
             <button id="clearRangeSegmentsBtn" class="small-btn">清除</button>
           </div>
           <div class="range-commit-actions">
-            <button id="applyRangeBtn" class="small-btn primary">应用</button>
-            <button id="removeRangeBtn" class="small-btn danger">移除</button>
+            <button id="applyRangeBtn" class="small-btn primary" aria-hidden="true" tabindex="-1">应用</button>
+            <button id="removeRangeBtn" class="small-btn danger" title="从目标帧删除当前这一组打码区域">从目标帧移除这些区域</button>
             <button id="copyShapesBtn" class="small-btn">复制区域</button>
             <button id="pasteShapesBtn" class="small-btn">粘贴到本帧</button>
           </div>
@@ -2603,6 +2686,8 @@
   <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+    const workspace = document.getElementById('workspace');
+    const canvasStage = document.getElementById('canvasStage');
     const sourceDirInput = document.getElementById('sourceDirInput');
     const outputDirInput = document.getElementById('outputDirInput');
     const sourceFileList = document.getElementById('sourceFileList');
@@ -2630,6 +2715,7 @@
     const frameKindText = document.getElementById('frameKindText');
     const statusEl = document.getElementById('status');
     const saveState = document.getElementById('saveState');
+    const zoomState = document.getElementById('zoomState');
     const shapeList = document.getElementById('shapeList');
     const rangeTimeline = document.getElementById('rangeTimeline');
     const rangeProgress = document.getElementById('rangeProgress');
@@ -2728,7 +2814,10 @@
       rangeSegments: [],
       rangeFrameStripSignature: '',
       activeRangeHandle: null,
+      timelineDragging: false,
       frameSliderDragging: false,
+      canvasZoom: 1,
+      canvasFitScale: 1,
       playing: false,
       playTimer: null,
       drawingPointerId: null,
@@ -3649,6 +3738,69 @@
       return Math.abs(a.x - b.x) >= RECT_MIN_SIZE || Math.abs(a.y - b.y) >= RECT_MIN_SIZE;
     }
 
+    function workspaceInnerSize() {
+      const styles = getComputedStyle(workspace);
+      const horizontalPadding = parseFloat(styles.paddingLeft) + parseFloat(styles.paddingRight);
+      const verticalPadding = parseFloat(styles.paddingTop) + parseFloat(styles.paddingBottom);
+      return {
+        width: Math.max(1, workspace.clientWidth - horizontalPadding),
+        height: Math.max(1, workspace.clientHeight - verticalPadding)
+      };
+    }
+
+    function updateCanvasLayout() {
+      const width = Number(canvas.width || 0);
+      const height = Number(canvas.height || 0);
+      if (!width || !height || width <= 1 || height <= 1) {
+        canvas.style.width = '1px';
+        canvas.style.height = '1px';
+        canvasStage.style.width = '100%';
+        canvasStage.style.height = '100%';
+        workspace.classList.remove('zoomed');
+        zoomState.textContent = '适应窗口 · Ctrl+滚轮缩放';
+        return;
+      }
+
+      const zoomed = state.canvasZoom > 1.001;
+      workspace.classList.toggle('zoomed', zoomed);
+      const innerSize = workspaceInnerSize();
+      const available = {
+        width: Math.max(1, innerSize.width - 10),
+        height: Math.max(1, innerSize.height - 10)
+      };
+      const fitScale = Math.min(1, available.width / width, available.height / height);
+      const displayScale = fitScale * state.canvasZoom;
+      const displayWidth = Math.max(1, Math.round(width * displayScale));
+      const displayHeight = Math.max(1, Math.round(height * displayScale));
+      state.canvasFitScale = fitScale;
+      canvas.style.width = `${displayWidth}px`;
+      canvas.style.height = `${displayHeight}px`;
+      canvasStage.style.width = `${Math.max(innerSize.width, displayWidth + 10)}px`;
+      canvasStage.style.height = `${Math.max(innerSize.height, displayHeight + 10)}px`;
+      zoomState.textContent = zoomed
+        ? `放大 ${Math.round(state.canvasZoom * 100)}% · Ctrl+滚轮缩放`
+        : '适应窗口 · Ctrl+滚轮缩放';
+      if (!zoomed) {
+        workspace.scrollLeft = 0;
+        workspace.scrollTop = 0;
+      }
+    }
+
+    function setCanvasZoom(nextZoom, anchorEvent = null) {
+      const next = Math.max(1, Math.min(8, nextZoom));
+      if (Math.abs(next - state.canvasZoom) < 0.001) return;
+      const rect = workspace.getBoundingClientRect();
+      const anchorX = anchorEvent ? anchorEvent.clientX - rect.left : rect.width / 2;
+      const anchorY = anchorEvent ? anchorEvent.clientY - rect.top : rect.height / 2;
+      const contentX = workspace.scrollLeft + anchorX;
+      const contentY = workspace.scrollTop + anchorY;
+      const ratio = next / state.canvasZoom;
+      state.canvasZoom = next;
+      updateCanvasLayout();
+      workspace.scrollLeft = contentX * ratio - anchorX;
+      workspace.scrollTop = contentY * ratio - anchorY;
+    }
+
     function resetCanvasInteraction() {
       state.drawing = null;
       state.pendingSelection = null;
@@ -4090,6 +4242,21 @@
       statusEl.textContent = `已把第 ${sourceFrame + 1} 帧的 ${source.length} 个区域应用到 ${formatRangeSegments()}`;
     }
 
+    function applyCurrentFrameToRange() {
+      const file = currentFile();
+      if (!file || isSingleFrame(file)) return;
+      state.rangeSource = clampFrameIndex(state.frame);
+      state.rangeSourceLocked = true;
+      const source = captureRangeShapes(state.rangeSource);
+      renderRangeControls();
+      draw();
+      if (!source.length) {
+        statusEl.textContent = '本帧没有打码区域，请先画一个区域';
+        return;
+      }
+      applyRangeToFrames();
+    }
+
     function removeRangeShapesFromFrames() {
       const file = currentFile();
       if (!file) return;
@@ -4171,6 +4338,7 @@
       state.activeFile = Math.max(0, Math.min(state.files.length - 1, index));
       state.scrollSourceIntoView = Boolean(options.scrollSource);
       state.frame = 0;
+      state.canvasZoom = 1;
       state.selectedId = null;
       state.selectedIds = [];
       state.selectionAnchorId = null;
@@ -4208,6 +4376,8 @@
       state.imageLoadSeq += 1;
       canvas.width = 1;
       canvas.height = 1;
+      state.canvasZoom = 1;
+      updateCanvasLayout();
       ctx.clearRect(0, 0, 1, 1);
       resetCanvasInteraction();
       clearSelection();
@@ -4251,6 +4421,7 @@
         if (loadSeq !== state.imageLoadSeq) return;
         canvas.width = image.naturalWidth;
         canvas.height = image.naturalHeight;
+        updateCanvasLayout();
         renderShapeList();
         renderActionControls();
         draw();
@@ -4654,7 +4825,7 @@
       return finalize(root);
     }
 
-    function renderExportResults(results, outputDir = '') {
+    function renderExportResults(results, outputDir = '', previewJobId = '') {
       exportStatus.innerHTML = '';
       if (outputDir) {
         const outputLine = document.createElement('div');
@@ -4710,6 +4881,46 @@
           .join('\n');
         failure.append(failureTitle, failureDetail);
         exportStatus.appendChild(failure);
+      }
+
+      if (previewJobId && rendered.length) {
+        const previews = document.createElement('section');
+        previews.className = 'export-previews';
+        const previewTitle = document.createElement('strong');
+        previewTitle.textContent = '成品预览';
+        const grid = document.createElement('div');
+        grid.className = 'export-preview-grid';
+
+        results.forEach((result, resultIndex) => {
+          if (result.status !== 'rendered') return;
+          const previewUrl = `/api/render/file/${encodeURIComponent(previewJobId)}/${resultIndex}`;
+          const item = document.createElement('figure');
+          item.className = 'export-preview-item';
+          let media;
+          if (String(result.format || '').toLowerCase() === 'webm') {
+            media = document.createElement('video');
+            media.controls = true;
+            media.autoplay = true;
+            media.loop = true;
+            media.muted = true;
+            media.playsInline = true;
+          } else {
+            media = document.createElement('img');
+            media.alt = `${result.outputName || result.id} 导出预览`;
+            media.loading = 'lazy';
+          }
+          media.className = 'export-preview-media';
+          media.src = previewUrl;
+          media.title = '最终导出文件预览';
+          const caption = document.createElement('figcaption');
+          caption.textContent = `${basenamePath(result.outputName || result.id)} · ${formatBytes(result.size || 0)}`;
+          caption.title = result.outputName || result.id;
+          item.append(media, caption);
+          grid.appendChild(item);
+        });
+
+        previews.append(previewTitle, grid);
+        exportStatus.appendChild(previews);
       }
     }
 
@@ -4820,7 +5031,7 @@
         const job = started.mode === 'job' ? await waitForExportJob(started.data.jobId, startedAt) : null;
         const results = job ? (job.results || []) : (started.data.results || []);
         const outputDir = job?.outputDir || started.data?.job?.outputDir || started.data?.outputDir || '';
-        renderExportResults(results, outputDir);
+        renderExportResults(results, outputDir, job?.id || started.data?.jobId || '');
         const okCount = results.filter(item => item.status === 'rendered').length;
         const failedCount = results.length - okCount;
         if (failedCount) {
@@ -5677,37 +5888,41 @@
       if (!currentFile() || isSingleFrame() || state.busy) return;
       if (evt.target === rangeStartHandle) state.activeRangeHandle = 'start';
       else if (evt.target === rangeEndHandle) state.activeRangeHandle = 'end';
-      else {
-        setFrame(frameFromTimelineEvent(evt));
-        return;
-      }
+      else state.timelineDragging = true;
       evt.preventDefault();
       rangeTimeline.setPointerCapture(evt.pointerId);
-      updateRangeHandle(state.activeRangeHandle, evt);
+      if (state.activeRangeHandle) updateRangeHandle(state.activeRangeHandle, evt);
+      else setFrame(frameFromTimelineEvent(evt));
     });
     rangeTimeline.addEventListener('pointermove', evt => {
-      if (!state.activeRangeHandle) return;
-      updateRangeHandle(state.activeRangeHandle, evt);
+      if (state.activeRangeHandle) updateRangeHandle(state.activeRangeHandle, evt);
+      else if (state.timelineDragging) setFrame(frameFromTimelineEvent(evt));
     });
     rangeTimeline.addEventListener('pointerup', evt => {
+      if (state.timelineDragging) setFrame(frameFromTimelineEvent(evt));
       state.activeRangeHandle = null;
+      state.timelineDragging = false;
       if (rangeTimeline.hasPointerCapture(evt.pointerId)) {
         rangeTimeline.releasePointerCapture(evt.pointerId);
       }
     });
     rangeTimeline.addEventListener('pointercancel', evt => {
       state.activeRangeHandle = null;
+      state.timelineDragging = false;
       if (rangeTimeline.hasPointerCapture(evt.pointerId)) {
         rangeTimeline.releasePointerCapture(evt.pointerId);
       }
     });
-    document.getElementById('setRangeSourceBtn').addEventListener('click', () => {
-      state.rangeSource = clampFrameIndex(state.frame);
-      state.rangeSourceLocked = true;
-      captureRangeShapes(state.rangeSource);
-      renderRangeControls();
-      draw();
-    });
+
+    workspace.addEventListener('wheel', evt => {
+      if (!evt.ctrlKey || !currentFile() || !state.image.complete) return;
+      evt.preventDefault();
+      const factor = evt.deltaY < 0 ? 1.2 : (1 / 1.2);
+      setCanvasZoom(state.canvasZoom * factor, evt);
+    }, { passive: false });
+
+    window.addEventListener('resize', updateCanvasLayout);
+    document.getElementById('setRangeSourceBtn').addEventListener('click', applyCurrentFrameToRange);
     addRangeSegmentBtn.addEventListener('click', addCurrentRangeSegment);
     clearRangeSegmentsBtn.addEventListener('click', clearRangeSegments);
     document.getElementById('setRangeStartBtn').addEventListener('click', () => {
@@ -5921,7 +6136,7 @@
       }
       if (shortcutMatches(evt, 'applyRange')) {
         evt.preventDefault();
-        applyRangeToFrames();
+        applyCurrentFrameToRange();
         return;
       }
       if (shortcutMatches(evt, 'cancel')) {
